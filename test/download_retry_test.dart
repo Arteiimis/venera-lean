@@ -77,7 +77,7 @@ void main() {
         await manager.init();
         final source = _Source();
         ComicSourceManager().add(source);
-        ImagesDownloadTask? task;
+        ImagesDownloadTask? pending;
         try {
           expect(await manager.setNewPath(newStorage.path), isNull);
           final comic = Directory('${newStorage.path}/comic')..createSync();
@@ -85,7 +85,7 @@ void main() {
               ? (Directory('${comic.path}/1')..createSync())
               : comic;
           File('${pages.path}/0.jpg').writeAsBytesSync([1, 2, 3]);
-          task = ImagesDownloadTask.fromJson({
+          final task = ImagesDownloadTask.fromJson({
             'type': 'ImagesDownloadTask',
             'source': source.key,
             'comicId': 'comic',
@@ -107,9 +107,10 @@ void main() {
             'index': 0,
             'chapter': 0,
           })!;
+          pending = task;
           final completed = Completer<void>();
           void onComplete() {
-            if (manager.find('comic', task!.comicType) != null &&
+            if (manager.find('comic', task.comicType) != null &&
                 !completed.isCompleted) {
               completed.complete();
             }
@@ -118,7 +119,7 @@ void main() {
           manager.addListener(onComplete);
           try {
             await IOOverrides.runWithIOOverrides(() async {
-              task!.resume();
+              task.resume();
               await completed.future.timeout(const Duration(seconds: 5));
               await task.settled;
             }, _ListingOverrides(pages.path));
@@ -141,9 +142,9 @@ void main() {
           expect(manager.path, newStorage.path);
           manager.downloadingTasks.clear();
         } finally {
-          task?.pause();
-          await task?.settled;
-          task?.dispose();
+          pending?.pause();
+          await pending?.settled;
+          pending?.dispose();
           await manager.saveCurrentDownloadingTasks();
           manager.close();
           await directory.delete(recursive: true);

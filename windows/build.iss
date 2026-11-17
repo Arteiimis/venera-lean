@@ -24,8 +24,8 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir={#RootPath}\build\windows
-OutputBaseFilename=Venera-Lean-{#MyAppVersion}-windows-installer
+OutputDir={#RootPath}\dist
+OutputBaseFilename=venera-lean-{#MyAppVersion}-windows-x64-setup
 SetupIconFile={#RootPath}\windows\runner\resources\app_icon.ico
 Compression=lzma
 SolidCompression=yes
@@ -58,6 +58,7 @@ Source: "{#RootPath}\build\windows\x64\runner\Release\screen_retriever_windows_p
 Source: "{#RootPath}\build\windows\x64\runner\Release\window_manager_plugin.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootPath}\build\windows\x64\runner\Release\local_auth_windows_plugin.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootPath}\build\windows\x64\runner\Release\zip_flutter.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#RootPath}\build\windows\x64\runner\Release\avif_native.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootPath}\build\windows\x64\runner\Release\rhttp.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootPath}\build\windows\x64\runner\Release\lodepng_flutter.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#RootPath}\build\windows\x64\runner\Release\dynamic_color_plugin.dll"; DestDir: "{app}"; Flags: ignoreversion

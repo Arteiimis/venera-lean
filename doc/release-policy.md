@@ -1,6 +1,6 @@
 # Release 发布规范（venera-lean）
 
-本仓库独立发行，不走上游的六平台机器人流程。发布由 `.github/workflows/release.yml` 完成，只构建两个平台：Android（4 个签名 APK）与 Windows（便携 ZIP）。
+本仓库独立发行，不走上游的六平台机器人流程。发布由 `.github/workflows/release.yml` 完成，只构建两个平台：Android（4 个签名 APK）与 Windows（便携 ZIP + Inno Setup 安装包）。
 
 ## 版本与标签
 
@@ -32,7 +32,7 @@
 | 平台 | 附件 |
 | --- | --- |
 | Android | `venera-lean-<ver>-arm64-v8a.apk`、`venera-lean-<ver>-armeabi-v7a.apk`、`venera-lean-<ver>-x86_64.apk`、`venera-lean-<ver>.apk`（universal） |
-| Windows | `venera-lean-<ver>-windows-x64.zip`（便携） |
+| Windows | `venera-lean-<ver>-windows-x64.zip`（便携）、`venera-lean-<ver>-windows-x64-setup.exe`（安装包，含开始菜单/桌面快捷方式与卸载项） |
 | 其他 | `SHA256SUMS` |
 
 ## 应用内更新

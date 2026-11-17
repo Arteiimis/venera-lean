@@ -69,8 +69,22 @@ void main() {
     }
     expect(source, contains('flutter build apk --release'));
     expect(source, contains('flutter build windows --release'));
+    expect(source, contains('windows/build_installer.ps1'));
+    expect(source, contains('choco install innosetup'));
     expect(source, contains('gh release create'));
     expect(source, contains('SHA256SUMS'));
+
+    // The installer ships the native decoder and the setup binary name that the
+    // release notes promise.
+    final installerScript = File('windows/build.iss').readAsStringSync();
+    expect(installerScript, contains('avif_native.dll'));
+    expect(
+      installerScript,
+      contains(r'OutputBaseFilename=venera-lean-{#MyAppVersion}-windows-x64-setup'),
+    );
+    expect(File('windows/build_installer.ps1').existsSync(), isTrue);
+    expect(File('windows/ChineseSimplified.isl').existsSync(), isTrue);
+    expect(File('windows/build.py').existsSync(), isFalse);
 
     // The upstream six-platform bot pipeline and its identity gate are gone.
     final workflows =

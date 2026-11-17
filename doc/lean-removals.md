@@ -54,7 +54,8 @@
 ## 批次 3 发布基建
 
 - 删除上游发布流水线与配套工具：`.github/workflows/main.yml`（六平台 + 机器人发布）、`.github/workflows/dispatch-release.yml`、`tool/check_release_identity.py`、`tool/test_release_identity.py`、`update_alt_store.py`、`alt_store.json`、`tool/test_alt_store.py`。合并上游时不要让它们回来：这些流程依赖上游的 bot 身份、macOS 证书与 AltStore 源。
-- 新增 `.github/workflows/release.yml`：`checks`（analyze + `flutter test --exclude-tags environment` + 版本一致性）→ `android`（用本仓库 keystore 签名，产出 4 个 APK）与 `windows`（便携 ZIP）；只有 `v*` 标签触发 `publish`（`SHA256SUMS` + `gh release create`），手动触发只构建不发布。
+- 新增 `.github/workflows/release.yml`：`checks`（analyze + `flutter test --exclude-tags environment` + 版本一致性）→ `android`（用本仓库 keystore 签名，产出 4 个 APK）与 `windows`（便携 ZIP + Inno Setup 安装包）；只有 `v*` 标签触发 `publish`（`SHA256SUMS` + `gh release create`），手动触发只构建不发布。
+- Windows 安装包：`windows/build_installer.ps1` 读取 `windows/build.iss` 的占位符（`{{version}}`/`{{root_path}}`）生成 `build/windows/installer.iss` 后调用 `iscc`，输出 `dist/venera-lean-<ver>-windows-x64-setup.exe`；中文化文件 `windows/ChineseSimplified.isl` 已内置（不再在构建时下载），`[Files]` 补上了 `avif_native.dll`。上游的 `windows/build.py` 已删除（它自己重跑 flutter build、改写 build.iss 且 zip 路径不一致）。
 - APK 文件名由 `venera-prime-*` 改为 `venera-lean-*`（`android/app/build.gradle`）；应用内更新按 `-<abi>.apk` 后缀选包，命名规则不可随意改。
 - 4 个依赖原生库/时序的测试标记 `@Tags(['environment'])`，CI 排除、需在带原生库的环境手工跑 `flutter test --tags environment`。
 - `doc/release-policy.md` 与 `test/release_workflow_test.dart` 按本流程重写。

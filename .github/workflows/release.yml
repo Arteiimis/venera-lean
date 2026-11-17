@@ -102,7 +102,7 @@ jobs:
           path: dist/*
 
   windows:
-    name: Windows portable
+    name: Windows builds
     needs: checks
     runs-on: windows-latest
     timeout-minutes: 60
@@ -128,6 +128,12 @@ jobs:
           $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)' -AllMatches).Matches[0].Groups[1].Value.Split('+')[0]
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "dist/venera-lean-$version-windows-x64.zip"
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Package installer
+        shell: pwsh
+        run: ./windows/build_installer.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: windows

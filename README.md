@@ -6,7 +6,7 @@ Venera Lean is an independently maintained, slimmed-down fork of [Venera Prime](
 
 It is a local comic reader that uses JavaScript scripts to access your personal comic collection, whether stored locally, on a NAS, or on other personal storage. Please do not use this software for illegal purposes.
 
-Compared with upstream, this fork removes reading statistics, follow updates, the toolbox and reader page margins; keeps its own backup format and WebDAV prefix; and updates only from [this repository's releases](https://github.com/Arteiimis/venera-lean/releases).
+Compared with upstream, this fork removes reading statistics, follow updates, the toolbox and reader page margins; keeps its own backup format and WebDAV prefix; and updates only from [this repository's releases](https://github.com/Arteiimis/venera-lean/releases). Only Windows and Android are built and released, so the other platform folders are intentionally absent.
 
 ## Features
 - Read local comics

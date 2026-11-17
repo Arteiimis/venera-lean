@@ -60,6 +60,14 @@
 - `doc/release-policy.md` 与 `test/release_workflow_test.dart` 按本流程重写。
 - 状态：已完成。
 
+## 批次 5 平台裁剪
+
+- 维护目标只有 Windows 与 Android。删除 `linux/`、`macos/`、`ios/`、`debian/` 四个平台目录（连同上游在这些平台上的打包定制），以及只服务它们的 `tool/build_appimage.sh`、`pubspec.yaml` 的 `flutter_to_arch` 配置块与 `flutter_to_arch`/`flutter_to_debian` 两个开发依赖。
+- 同时删除 Windows ARM64 的打包脚本 `windows/build_arm64.py`、`windows/build_arm64.iss`（该脚本实际打包的是 x64 目录，本身已失效）。
+- 保留：`android/`、`windows/`；Dart 里的平台判断（`App.isAndroid`/`App.isWindows`/`Platform.isX`）不动，删它们属于另一类改动。
+- 上游合并：上游若再改这些路径，冲突处理恒为「保持删除」。确实需要某个平台时用 `flutter create --platforms=<platform> .` 重新生成模板，但拿不回上游在该平台的定制。
+- 状态：已完成。
+
 ## 批次 4 自有身份与交互回退
 
 ### 应用包名

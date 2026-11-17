@@ -96,10 +96,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  flutter_to_arch: ^1.0.1
-  flutter_to_debian: 
-    git:
-      url: https://github.com/venera-app/flutter_to_debian.git
 
 flutter:
   uses-material-design: true
@@ -111,13 +107,3 @@ flutter:
     - assets/tags_tw.json
     - assets/opencc.txt
 # fonts:
-
-flutter_to_arch:
-  name: Venera Lean
-  icon: debian/gui/venera.png
-  categories: Utility
-  keywords: Flutter;comic;images;
-  url: https://github.com/Arteiimis/venera-lean
-  depends:
-    - gtk3
-    - webkit2gtk-4.1

@@ -84,7 +84,7 @@ android {
 
     defaultConfig {
         manifestPlaceholders["primeTestDocumentsEnabled"] = integrationTestBuild ? "true" : "false"
-        manifestPlaceholders["primeAppLabel"] = integrationTestBuild ? "Venera Prime Test" : "Venera Prime"
+        manifestPlaceholders["appLabel"] = integrationTestBuild ? "Venera Lean Test" : "Venera Lean"
         applicationId = integrationTestBuild ? "io.github.arteiimis.venera.integrationtest" : "io.github.arteiimis.venera"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.

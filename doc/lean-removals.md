@@ -65,8 +65,8 @@
 ### 应用包名
 
 - Android 的 `namespace`/`applicationId` 改为 `io.github.arteiimis.venera`（集成测试包 `….integrationtest`），Kotlin 源码移到同包路径；Linux app id、iOS/macOS bundle id、集成测试与 adb 脚本、`AGENTS.md` 同步更新。
-- 保留：`windows/runner/Runner.rc` 的 `CompanyName`/`ProductName` 不动——Windows 数据目录 `%APPDATA%\com.github.wgh136\Venera Prime` 由它们决定，改了会与现有安装在用的目录分叉。
-- 上游冲突：`android/app/build.gradle`、`AndroidManifest.xml`、`Runner.rc` 合并时以本仓库为准。
+- Windows 也换成自有身份：`windows/runner/Runner.rc` 的 `CompanyName=Arteiimis`、`ProductName=Venera Lean`、`InternalName`/`OriginalFilename=venera-lean`，`BINARY_NAME=venera-lean`，数据目录因此变成 `%APPDATA%\Arteiimis\Venera Lean`，与上游安装完全分离；安装包用新的 `AppId` 并去掉了上游脚本里删除 `C:\Program Files (x86)\Venera Prime` 的 `[Code]` 块，不会动到已装的上游版本。
+- 上游冲突：`android/app/build.gradle`、`AndroidManifest.xml`、`Runner.rc`、`windows/CMakeLists.txt`、`linux/CMakeLists.txt` 合并时以本仓库为准。
 - 状态：已完成。
 
 ### 本地列表点击直接阅读

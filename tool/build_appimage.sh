@@ -11,13 +11,13 @@ bundle=$(find build/linux -type d -path '*/release/bundle' -print -quit)
 test -n "$bundle"
 output="$PWD/build/linux/appimage"
 mkdir -p "$output"
-appdir="$output/VeneraPrime.AppDir"
+appdir="$output/VeneraLean.AppDir"
 rm -rf "$appdir"
 cp -a "$bundle" "$appdir"
 cat > "$appdir/venera.desktop" <<'EOF'
 [Desktop Entry]
-Name=Venera Prime
-Exec=venera
+Name=Venera Lean
+Exec=venera-lean
 Icon=venera
 Type=Application
 Categories=Utility;
@@ -51,7 +51,7 @@ gio_modules=$(pkg-config --variable=giomoduledir gio-2.0)
 test -d "$gio_modules"
 cp -a "$gio_modules" "$appdir/usr/lib/gio"
 
-deploy_args=(--appdir "$appdir" --executable "$appdir/venera")
+deploy_args=(--appdir "$appdir" --executable "$appdir/venera-lean")
 while IFS= read -r -d '' library; do
   deploy_args+=(--library "$library")
 done < <(find "$appdir/lib" "$appdir/usr/lib/webkit2gtk-4.1" "$appdir/usr/lib/gio" -type f -name '*.so*' -print0)
@@ -69,7 +69,7 @@ export LD_LIBRARY_PATH="$HERE/lib:$HERE/usr/lib:${LD_LIBRARY_PATH:-}"
 export WEBKIT_EXEC_PATH="$HERE/usr/libexec/webkit2gtk-4.1"
 export WEBKIT_INJECTED_BUNDLE_PATH="$HERE/usr/lib/webkit2gtk-4.1/injected-bundle"
 export GIO_MODULE_DIR="$HERE/usr/lib/gio"
-exec "$HERE/venera" "$@"
+exec "$HERE/venera-lean" "$@"
 EOF
 chmod +x "$appdir/AppRun"
 
@@ -79,7 +79,7 @@ while IFS= read -r -d '' binary; do
     echo "Unresolved dependency: $binary" >&2
     exit 1
   fi
-done < <(find "$appdir" -type f \( -name '*.so*' -o -name 'WebKit*Process' -o -name venera \) -print0)
+done < <(find "$appdir" -type f \( -name '*.so*' -o -name 'WebKit*Process' -o -name venera-lean \) -print0)
 test -f "$appdir/usr/lib/libwebkit2gtk-4.1.so.0"
 version=$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)
-"$appimagetool" "$appdir" "$output/Venera-Prime-${version}-${arch}.AppImage"
+"$appimagetool" "$appdir" "$output/Venera-Lean-${version}-${arch}.AppImage"

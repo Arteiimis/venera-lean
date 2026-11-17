@@ -113,11 +113,11 @@ flutter:
 # fonts:
 
 flutter_to_arch:
-  name: Venera Prime
+  name: Venera Lean
   icon: debian/gui/venera.png
   categories: Utility
   keywords: Flutter;comic;images;
-  url: https://github.com/venera-app/venera-prime
+  url: https://github.com/Arteiimis/venera-lean
   depends:
     - gtk3
     - webkit2gtk-4.1

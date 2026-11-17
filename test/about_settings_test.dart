@@ -9,7 +9,7 @@ import 'package:venera/utils/translations.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const description =
-      'Venera Prime is a free and open-source app for comic reading.';
+      'Venera Lean is a free and open-source comic reader.';
   const telegramLabels = {
     'zh-CN': 'Venera Prime Telegram 群',
     'zh-TW': 'Venera Prime Telegram 群',

@@ -111,7 +111,7 @@ class _ProjectNoticeDialogState extends State<ProjectNoticeDialog> {
     canPop: !widget.acknowledgementRequired && !_saving,
     child: AlertDialog(
       scrollable: true,
-      title: Text('About Venera Prime'.tl),
+      title: Text('About Venera Lean'.tl),
       content: SizedBox(
         width: 520,
         child: Column(

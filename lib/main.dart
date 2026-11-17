@@ -286,7 +286,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           tertiary = light.tertiary;
         }
         return MaterialApp(
-          title: "Venera Prime",
+          title: "Venera Lean",
           home: home,
           debugShowCheckedModeBanner: false,
           theme: getTheme(primary, secondary, tertiary, Brightness.light),

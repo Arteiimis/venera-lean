@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.github.wgh136" "\0"
-            VALUE "FileDescription", "Venera Prime" "\0"
+            VALUE "CompanyName", "Arteiimis" "\0"
+            VALUE "FileDescription", "Venera Lean" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "venera-prime" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.github.wgh136. All rights reserved." "\0"
-            VALUE "OriginalFilename", "venera-prime.exe" "\0"
-            VALUE "ProductName", "Venera Prime" "\0"
+            VALUE "InternalName", "venera-lean" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2024 com.github.wgh136, 2026 Arteiimis. All rights reserved." "\0"
+            VALUE "OriginalFilename", "venera-lean.exe" "\0"
+            VALUE "ProductName", "Venera Lean" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

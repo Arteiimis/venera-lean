@@ -1,4 +1,4 @@
-# Venera Prime 2026.11.0
+# Venera Lean 2026.11.0
 
 ## 本次更新
 

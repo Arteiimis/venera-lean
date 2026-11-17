@@ -5,7 +5,7 @@
 ## 版本与标签
 
 - 版本线为 CalVer：`年.月.序号`，构建号单独递增（`pubspec.yaml` 的 `+<build>`）。
-- `pubspec.yaml` 版本、`lib/foundation/app.dart` 的 `final version`、`doc/release-<ver>.md` 首行 `# Venera Prime <ver>`、git tag `v<ver>` 四处必须一致；核验：`RELEASE_TAG=v<ver> python3 tool/check_version.py`。
+- `pubspec.yaml` 版本、`lib/foundation/app.dart` 的 `final version`、`doc/release-<ver>.md` 首行 `# Venera Lean <ver>`、git tag `v<ver>` 四处必须一致；核验：`RELEASE_TAG=v<ver> python3 tool/check_version.py`。
 - 不得复用上游已有的 `v2.x` 标签；本仓库的版本一律 `v<CalVer>`。
 
 ## 发布流程

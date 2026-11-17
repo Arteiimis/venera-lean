@@ -36,7 +36,7 @@ class _AboutSettingsState extends State<AboutSettings> {
             const SizedBox(height: 8),
             Text("V${App.version}", style: const TextStyle(fontSize: 16)),
             Text(
-              "Venera Prime is a free and open-source app for comic reading."
+              "Venera Lean is a free and open-source comic reader."
                   .tl,
               textAlign: TextAlign.center,
             ),

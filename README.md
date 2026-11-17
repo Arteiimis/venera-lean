@@ -1,13 +1,12 @@
-# venera next version
+# Venera Lean
 
-
-# venera-prime
 [![flutter](https://img.shields.io/badge/flutter-3.41.4-blue)](https://flutter.dev/)
 
+Venera Lean is an independently maintained, slimmed-down fork of [Venera Prime](https://github.com/venera-app/venera-prime), which in turn derives from [Venera](https://github.com/venera-app/venera) (now archived).
 
-This is an unofficial fork of Venera, independently maintained by a third party.
+It is a local comic reader that uses JavaScript scripts to access your personal comic collection, whether stored locally, on a NAS, or on other personal storage. Please do not use this software for illegal purposes.
 
-Venera Prime is a local comic reader that uses JavaScript scripts to access your personal comic collection, whether stored locally, on a NAS, or on other personal storage. Please do not use this software for illegal purposes.
+Compared with upstream, this fork removes reading statistics, follow updates, the toolbox and reader page margins; keeps its own backup format and WebDAV prefix; and updates only from [this repository's releases](https://github.com/Arteiimis/venera-lean/releases).
 
 ## Features
 - Read local comics
@@ -20,7 +19,7 @@ Venera Prime is a local comic reader that uses JavaScript scripts to access your
 
 ## Contributing
 
-Pull requests are currently disabled. To contribute, fork this repository, make your changes, and open an [issue](https://github.com/venera-app/venera-prime/issues) with a link to your fork, branch, or commits to request a review and merge.
+Open an [issue](https://github.com/Arteiimis/venera-lean/issues) with a link to your fork, branch, or commits to propose a change.
 
 ## Build from source
 1. Clone the repository

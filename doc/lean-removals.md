@@ -59,3 +59,21 @@
 - 4 个依赖原生库/时序的测试标记 `@Tags(['environment'])`，CI 排除、需在带原生库的环境手工跑 `flutter test --tags environment`。
 - `doc/release-policy.md` 与 `test/release_workflow_test.dart` 按本流程重写。
 - 状态：已完成。
+
+## 批次 4 自有身份与交互回退
+
+### 应用包名
+
+- Android 的 `namespace`/`applicationId` 改为 `io.github.arteiimis.venera`（集成测试包 `….integrationtest`），Kotlin 源码移到同包路径；Linux app id、iOS/macOS bundle id、集成测试与 adb 脚本、`AGENTS.md` 同步更新。
+- 保留：`windows/runner/Runner.rc` 的 `CompanyName`/`ProductName` 不动——Windows 数据目录 `%APPDATA%\com.github.wgh136\Venera Prime` 由它们决定，改了会与现有安装在用的目录分叉。
+- 上游冲突：`android/app/build.gradle`、`AndroidManifest.xml`、`Runner.rc` 合并时以本仓库为准。
+- 状态：已完成。
+
+### 本地列表点击直接阅读
+
+- `lib/pages/local_comics_page.dart`：点击漫画直接 `comic.read()`；2.7.0 引入的 `Read`/`View Detail` 选择弹窗（`_openComic`）删除。
+- `lib/pages/home_page.dart`：首页「本地」横向条目的点击同样直接进阅读器。
+- 查看详情仍在右键菜单（`ComicTile.showMenu` 的 `Details`，打开 `ComicPage`；本地漫画走 `sourceKey == 'local'` 分支），章节列表也在详情页里。
+- 测试：`test/local_comics_page_test.dart` 改为「点击即进阅读器」+「右键菜单仍有 Details」；`test/support/reader_fixture.dart` 补 `ReadLaterManager` 初始化，否则右键菜单构建时会抛 `LateInitializationError`（菜单会查阅读稍后）。
+- 上游碰撞点：`local_comics_page.dart`（2.7.0 起被大改）、`home_page.dart` 62 次提交。
+- 状态：已完成。

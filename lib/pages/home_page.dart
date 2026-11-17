@@ -688,27 +688,14 @@ class _LocalState extends State<_Local> {
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: local.length,
-                    itemBuilder: (context, index) {
-                      final heroID =
+                    itemBuilder: (context, index) => SimpleComicTile(
+                      coverHeight: _homeCoverHeight(context),
+                      comic: local[index],
+                      heroID:
                           'local:${local[index].sourceKey}:${local[index].id}'
-                              .hashCode;
-                      return SimpleComicTile(
-                        coverHeight: _homeCoverHeight(context),
-                        comic: local[index],
-                        heroID: heroID,
-                        onTap: () {
-                          context.to(
-                            () => ComicPage(
-                              id: local[index].id,
-                              sourceKey: local[index].sourceKey,
-                              cover: local[index].cover,
-                              title: local[index].title,
-                              heroID: heroID,
-                            ),
-                          );
-                        },
-                      ).paddingHorizontal(8).paddingVertical(2);
-                    },
+                              .hashCode,
+                      onTap: () => local[index].read(),
+                    ).paddingHorizontal(8).paddingVertical(2),
                   ),
                 ).paddingHorizontal(8),
               Row(

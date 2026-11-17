@@ -11,6 +11,7 @@ import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/history.dart';
 import 'package:venera/foundation/local.dart';
+import 'package:venera/foundation/read_later.dart';
 import 'package:venera/pages/reader/reader.dart';
 
 import 'test_translations.dart';
@@ -119,6 +120,7 @@ Future<dynamic> openReader(
     await local.init();
     await LocalFavoritesManager().init();
     await HistoryManager().init();
+    await ReadLaterManager().init();
     comic = LocalComic(
       id: 'reader-fixture',
       title: 'Reader fixture',
@@ -144,6 +146,7 @@ Future<dynamic> openReader(
       local.close();
       LocalFavoritesManager().close();
       HistoryManager().close();
+      ReadLaterManager().close();
       await root.delete(recursive: true);
     });
     for (final entry in previous.entries) {

@@ -80,69 +80,6 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
     return bytes;
   }
 
-  Future<void> _openComic(LocalComic comic) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(comic.title),
-        children: [
-          SimpleDialogOption(
-            child: Text('Read'.tl),
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              comic.read();
-            },
-          ),
-          SimpleDialogOption(
-            child: Text('View Detail'.tl),
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              if (comic.comicType == ComicType.local) {
-                showDialog<void>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text(comic.title),
-                    content: SingleChildScrollView(
-                      child: Text(
-                        [
-                          comic.subtitle,
-                          comic.description,
-                          comic.tags.join(', '),
-                          comic.baseDir,
-                        ].where((s) => s.isNotEmpty).join('\n\n'),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Close'.tl),
-                      ),
-                    ],
-                  ),
-                );
-              } else {
-                context.to(
-                  () => ComicPage(id: comic.id, sourceKey: comic.sourceKey),
-                );
-              }
-            },
-          ),
-          for (final entry
-              in comic.chapters?.allChapters.entries ??
-                  <MapEntry<String, String>>[])
-            if (comic.downloadedChapters.contains(entry.key))
-              SimpleDialogOption(
-                child: Text(entry.value),
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  comic.read(chapterId: entry.key);
-                },
-              ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _moveComics(List<LocalComic> items) async {
     await showDialog<void>(
       context: context,
@@ -673,7 +610,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                   c.id,
                   (c as LocalComic).comicType,
                 );
-                if (comic != null) _openComic(comic);
+                comic?.read();
               }
             },
             menuBuilder: (c) {

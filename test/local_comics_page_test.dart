@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/components/components.dart';
@@ -13,7 +14,7 @@ import 'support/reader_fixture.dart' as fixture;
 
 void main() {
   testWidgets(
-    'local library shows size, manages categories and opens a downloaded chapter directly',
+    'local library shows size, manages categories and opens the reader on tap',
     (tester) async {
       await fixture.openReader(tester, 'galleryLeftToRight');
       await tester.pumpWidget(const SizedBox());
@@ -79,17 +80,38 @@ void main() {
         local.library.placements[(comic.id, 0)]?.folder,
         local.library.folders.single.id,
       );
-      // Exit selection, filter the category, then open its downloaded chapter.
+      // Exit selection and filter the category.
       await tester.tap(find.byIcon(Icons.close).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Offline'));
       await fixture.settle(tester);
+
+      // A plain tap opens the reader immediately, without a choice dialog.
       await tester.tap(find.text('Reader fixture'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Second chapter'));
       await fixture.settle(tester);
-      expect(tester.widget<Reader>(find.byType(Reader)).initialChapter, 2);
+      expect(tester.widget<Reader>(find.byType(Reader)).initialChapter, 1);
+      expect(find.byType(SimpleDialog), findsNothing);
       expect(tester.takeException(), isNull);
+
+      // Details and its chapters stay in the right-click menu.
+      await tester.pumpWidget(const SizedBox());
+      await fixture.settle(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: App.rootNavigatorKey,
+          builder: (context, child) => WindowFrame(child!),
+          home: const LocalComicsPage(),
+        ),
+      );
+      await fixture.settle(tester);
+      await tester.tap(find.text('Offline'));
+      await fixture.settle(tester);
+      await tester.tap(find.text('Reader fixture'), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('Move to folder'), findsOneWidget);
+      expect(find.text('View Detail'), findsNothing);
+
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 2));
       await fixture.settle(tester);

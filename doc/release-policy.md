@@ -1,80 +1,35 @@
-# Release 发布规范
+# Release 发布规范（venera-lean）
 
-本规范以 [v2.4.4 的 GitHub Release](https://github.com/venera-app/venera-prime/releases/tag/v2.4.4) 为写作范例，并保留项目的发布流程约定。发布说明面向安装新版的用户，应能回答“改了什么、如何复查、还有哪些环境未验证”。历史 Release 是当时的记录，其中的测试结果、提出者名单和待确认状态不能直接沿用。
+本仓库独立发行，不走上游的六平台机器人流程。发布由 `.github/workflows/release.yml` 完成，只构建两个平台：Android（4 个签名 APK）与 Windows（便携 ZIP）。
 
-## 版本与发布范围
+## 版本与标签
 
-- 遵从用户明确指定的版本，不因当前分支、已有草稿或语义化版本推断而擅自改成其他版本。版本冲突应先说明实际状态，再按用户指示处理。
-- `pubspec.yaml` 的版本及构建号、`lib/foundation/app.dart` 的运行时版本、`doc/release-X.Y.Z.md` 的标题和 `vX.Y.Z` 标签必须一致。执行 `RELEASE_TAG=vX.Y.Z python3 tool/check_version.py` 核验；命令中的版本应替换为实际目标版本。
-- 发布说明保存在 `doc/release-X.Y.Z.md`，第一行固定为 `# Venera Prime X.Y.Z`。GitHub Release 使用同一文件作为正文，避免本地与线上说明不一致。
-- 已有 Release 的正文、附件和标签不因准备新版本而被改动。补发或重发已有版本须在用户授权范围内处理。
+- 版本线为 CalVer：`年.月.序号`，构建号单独递增（`pubspec.yaml` 的 `+<build>`）。
+- `pubspec.yaml` 版本、`lib/foundation/app.dart` 的 `final version`、`doc/release-<ver>.md` 首行 `# Venera Prime <ver>`、git tag `v<ver>` 四处必须一致；核验：`RELEASE_TAG=v<ver> python3 tool/check_version.py`。
+- 不得复用上游已有的 `v2.x` 标签；本仓库的版本一律 `v<CalVer>`。
 
-## 编写前核实
+## 发布流程
 
-1. 阅读目标版本实际包含的提交和改动，确认功能入口、触发条件、修复前的表现及修复后的行为；未合入发布提交的内容不能列入。
-2. 阅读关联 issue 的正文及最新评论，核对 `author.login`、复现步骤、受影响版本、是否已有提出者确认及当前状态。可使用 `gh issue view N --json number,title,author,state,body,comments,url`。PR 作者、评论者与 issue 提出者可能不同，不得混用署名。
-3. 查阅本次实际执行的分析、测试、构建、真机验证和日志，记录环境与结果。旧版本通过的检查不代表当前发布提交通过。
-4. 如参考 v2.4.4，应读取线上原文：`gh release view v2.4.4 --json body`。复用其表达方式，不照抄旧测试数字、旧设备覆盖或旧待确认名单。
+1. 提交并推送 `master`，确认 CI 的 `checks` 任务（analyze + test）通过。
+2. 写 `doc/release-<ver>.md`：`## 本次更新`（每项写清入口与可观察行为）、`## 请更新后验证并反馈`、`## 验证范围`（只写实际执行过的检查，区分模拟与真机）。
+3. 打标签并推送：`git tag v<ver> && git push origin v<ver>`。工作流会自动构建、生成 `SHA256SUMS`、创建 GitHub Release。
+4. `workflow_dispatch` 手动触发只构建产物、不发布 Release，用于验证流水线。
 
-## Release 正文结构
+## 签名与凭据
 
-### 本次更新
+- Android 使用本仓库自己的 keystore：GitHub Secrets `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`。
+- 本地构建在 `android/key.properties` 填同样四项；`key.properties` 与 `*.jks` 由 `android/.gitignore` 忽略，绝不入库。
+- 证书指纹（SHA-256）：`D6:32:95:48:5F:EE:A3:76:34:36:FA:C0:76:51:35:07:69:E2:BF:5B:F6:0A:9A:02:42:71:8D:4E:68:AA:99:ED`。
+- 签名一旦对外发布便不可更换：已安装设备只能同签名升级，换签名等于要求用户卸载重装并丢失应用内数据。
 
-每项写成“**具体功能或问题 #编号**（@提出者）：触发条件／操作入口；修复后可观察的行为；必要的兼容性或边界说明”。没有关联 issue 时省略编号和署名，不能编造。涉及多个 issue 时分别核实对应关系；实现贡献者需要致谢时另行注明。
+## 产物
 
-描述应具体到用户可按原复现步骤判断结果。例如 v2.4.4 的 WebDAV 条目写明关闭自动同步后不再因保存数据触发全量上传，手动上传仍可使用，排队任务执行前会重新检查开关。避免只写“优化同步”“修复一些问题”，也不要承诺尚未复现或验证的结果。不能复现原问题时，应写清已采取的修正和待验证条件。
+| 平台 | 附件 |
+| --- | --- |
+| Android | `venera-lean-<ver>-arm64-v8a.apk`、`venera-lean-<ver>-armeabi-v7a.apk`、`venera-lean-<ver>-x86_64.apk`、`venera-lean-<ver>.apk`（universal） |
+| Windows | `venera-lean-<ver>-windows-x64.zip`（便携） |
+| 其他 | `SHA256SUMS` |
 
-### 请更新后验证并反馈
+## 应用内更新
 
-每次发布均保留以下意思，并将版本替换为实际版本：
-
-- 请关联 issue 的提出者安装本次版本，按原来的复现步骤复查。
-- 已解决时，请在原 issue 中确认，并及时关闭尚未关闭的 issue。
-- 仍存在时，请在原 issue 提供版本号、系统与设备、漫画源、复现步骤，以及必要的日志或录屏；已关闭的问题也可继续留言或重新打开。
-- 日志、截图和录屏应遮盖账号、密码、令牌及 WebDAV 私有地址等敏感信息。
-- 关联 issue 不代表所有设备、漫画源及服务端都已验证，也不会自动关闭这些 issue。
-
-发布、合入改动或自动化测试通过都不等于提出者确认。Release 说明和关联提交／PR 不使用会自动关闭 issue 的关键字（如 `Fixes #N`、`Closes #N`、`Resolves #N`）；使用“关联 #N”并等待复查。不要为完成发布擅自关闭 issue。
-
-### 历史待确认问题
-
-对以前版本已包含相关改动、仍需升级复查的问题，单列历史问题表：
-
-| 相关 issue | 提出者 | 请复查的行为 |
-| --- | --- | --- |
-| #实际编号 | @核实后的提出者 | 用户可执行的操作与预期结果 |
-
-每次发布前重新检查各 issue 的作者、最新评论、确认状态和当前 OPEN/CLOSED 状态。历史待确认表只允许列入当前仍为 OPEN 且确有待复查行为的 issue；当前已关闭（CLOSED）的 issue 一律排除，不得以“缺少提出者明确确认”“只有截图”“本版另有相关改动”或其他推测为由继续列出。即使 issue 关闭不等于完整环境验证，也不得把它重新列为历史待确认；只有已重新打开且核实仍需复查的问题才可重新纳入。已有明确确认且没有新回归证据的开放条目也不再列为待确认。不得照抄旧 Release 的名单；发布前最后一次核对表内每个 issue 均为 OPEN，不符合者删除。没有历史待确认项时省略表格。
-
-说明表中的改动属于此前版本，本次再次关联是为了收集新版验证结果，避免把历史修复冒充本次新功能。表中行为应准确对应 issue；只有同一提出者且行为映射清楚时才合并编号。
-
-### 验证范围
-
-- 仅列本次发布提交实际完成的静态分析、自动化回归、平台构建、真机测试及其结果；给出有助于判断覆盖范围的设备／系统、场景和必要的测试数量。
-- 区分模拟数据、模拟漫画源、本地测试服务与真实用户环境。例如本地 WebDAV HTTP 测试不能表述为已验证用户的坚果云账户。
-- 明确未覆盖的硬件、第三方漫画源／服务端、原始备份、权限交互或升级安装场景。跳过、失败及未执行的检查应如实说明，不能写成通过。
-- 构建成功不等于功能已在该平台真机验证。不要沿用 v2.4.4 的覆盖声明，除非本次确实重新执行并有证据。
-
-## 发布执行与核验
-
-1. **提交身份**：默认使用 `Anonymous <anonymous@users.noreply.github.com>`，同时检查 author 和 committer，不引入个人身份。现有检查也允许 `github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>`。遵循 `tool/check_release_identity.py`，不为了绕过检查修改规则。
-2. **机器人发布**：通过 `.github/workflows/main.yml`（Build ALL）的机器人流程发布，使 Release 发布者保持 `github-actions[bot]`。默认由机器人触发；仅用户明确同意时才启用 `allow_personal_trigger`，且 Release 仍由机器人发布。不要用个人身份直接创建 Release 替代该流程。
-   - 没有本地机器人凭证时，可手动启动 `.github/workflows/dispatch-release.yml`，传入已存在的 `vX.Y.Z` 标签。该入口使用 GitHub Actions token 调度 `main.yml`，固定六平台全开、`publish_release=true`、`allow_personal_trigger=false`；Build ALL 仍执行原有提交身份与实际触发者检查。调度入口的人工操作仍保留在 Actions／审计记录中，不等于隐藏操作者。
-3. **六平台全量构建**：正式发布必须完整构建 Android、iOS、macOS、Windows、Linux x64、Linux ARM64。手动触发时所有 `build_*` 输入均为 `true`，指定实际 `release_tag` 和 `publish_release=true`。以这六个构建任务及机器人 Release 任务全部成功作为发布完成条件；skipped 不视为成功。
-   - 托管 runner 分配失败时，可通过机器人调度入口的 `retry_run_id` 重试失败任务，保留已成功的构建。若六平台全部成功但发布失败，可用 `publish_build_run_id` 从默认分支恢复发布。流程必须核对来源 run 的机器人身份、标签提交及六个任务均成功，然后读取原 run 的产物；恢复 run 中跳过的构建不计为成功，成功证据来自原 run。不得移动已有标签来规避发布错误。
-4. **标准附件范围**：现有工作流按以下清单生成 **14 个上传附件**（GitHub 自动提供的源码压缩包不计入）。默认不再单独读取、下载或核验线上附件，也不下载 Actions 构建副本比对 SHA-256。仅在用户明确要求或处理具体发布故障时，执行相关检查；数量与签名等未经核验时，不宣称已核验。
-
-| 平台 | 当前标准附件 | 数量 |
-| --- | --- | --- |
-| Android | 通用 APK、arm64-v8a APK、armeabi-v7a APK、x86_64 APK | 4 |
-| iOS | IPA | 1 |
-| macOS | DMG | 1 |
-| Windows | 安装 EXE、便携 ZIP | 2 |
-| Linux x64 | DEB、AppImage、Arch 主包与 debug 包（`.pkg.tar.zst`） | 4 |
-| Linux ARM64 | DEB、AppImage | 2 |
-
-5. **Android 签名检查按需执行**：正常发布沿用现有 CI 签名配置，不默认下载 APK 或与上一版复核证书。用户要求检查、或出现实际签名／升级故障时，再用 `apksigner verify --print-certs` 检查相关 APK 的签名证书、包名、版本号及 versionCode；文件 SHA-256 不能代替证书指纹。发现签名不一致时必须如实说明并处理，不宣称升级兼容。
-6. **发布结果**：依据工作流实际结果报告发布状态，保留发布提交、版本、工作流链接及已有验证记录。六个平台和 Release 任务全部成功后即可报告发布完成，无须额外产物核验；未执行的测试、附件检查或真机升级验证不得写成通过。用户明确要求停止核验时，停止后续检查，不因旧流程再次要求确认。
-7. **完成后的 Actions 清理**：六平台构建及机器人发布成功后，按已授权的清理范围删除已完成的 Actions **run 记录**，不以附件、哈希或签名复核作为前置条件。根据本轮记录确认 run ID、所属仓库／工作流和完成状态；不删除运行中的任务。保留所需构建结果后再清理，不删除 workflow 文件、GitHub Release、标签或发布附件。删除 run 不会抹除 GitHub 审计记录或通知。
-
-若用户明确调整平台或附件范围，应同步说明新的清单；未经要求维持六平台、14 个附件的标准。发布授权、触发方式和清理授权沿用当前会话已有明确指示，无须重复询问已经明确授权的操作。
+更新检查（`lib/foundation/app_update.dart`）只接受本仓库 `releases/download/` 下的资产，按文件名后缀 `-<abi>.apk` 选择架构，universal 包作为回退。发布时不要修改这条文件名规则。

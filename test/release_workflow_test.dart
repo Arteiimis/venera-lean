@@ -10,36 +10,22 @@ void main() {
     expect(gradle, contains('flutterTarget.startsWith("integration_test/")'));
     expect(gradle, contains('flutterTarget.contains("/integration_test/")'));
     expect(gradle, contains('project.findProperty("primeIntegrationTest")'));
-    expect(gradle, contains('flutterTarget.endsWith("/listener.dart")'));
     expect(gradle, contains('applicationId = integrationTestBuild ?'));
     expect(gradle, contains('com.github.wgh136.venera.prime.integrationtest'));
   });
 
-  test('both Linux AppImages deploy WebKit libraries and subprocesses', () {
-    final workflow = loadYaml(
-      File('.github/workflows/main.yml').readAsStringSync(),
+  test('release APK names belong to this app', () {
+    final gradle = File('android/app/build.gradle').readAsStringSync();
+    expect(
+      gradle,
+      contains(
+        r'outputFileName = "venera-lean-${variant.versionName}-${abi}.apk"',
+      ),
     );
-    for (final platform in {
-      'Build_Linux': 'x86_64',
-      'Build_Linux_ARM64': 'aarch64',
-    }.entries) {
-      final steps = workflow['jobs'][platform.key]['steps'] as YamlList;
-      final commands = steps.map((step) => step['run'] ?? '').join('\n');
-      expect(commands, contains('libwebkit2gtk-4.1-dev'));
-      expect(
-        commands,
-        contains('bash tool/build_appimage.sh ${platform.value}'),
-      );
-    }
-    final script = File('tool/build_appimage.sh').readAsStringSync();
-    expect(script, contains('"\$linuxdeploy" "\${deploy_args[@]}"'));
-    expect(script, contains('WebKitNetworkProcess'));
-    expect(script, contains('WebKitWebProcess'));
-    expect(script, contains('WEBKIT_EXEC_PATH'));
-    expect(script, contains('WEBKIT_INJECTED_BUNDLE_PATH'));
-    expect(script, contains('libwebkit2gtk-4.1.so.0'));
-    expect(script, contains('not found'));
-    expect(script, contains(r'$HERE/lib:$HERE/usr/lib'));
+    expect(
+      gradle,
+      contains(r'outputFileName = "venera-lean-${variant.versionName}.apk"'),
+    );
   });
 
   test('runtime version matches pubspec version', () {
@@ -63,82 +49,38 @@ void main() {
     expect(aboutSource, contains(r'Text("V${App.version}"'));
   });
 
-  test('workflow validates versions before every build', () {
-    final workflow = loadYaml(
-      File('.github/workflows/main.yml').readAsStringSync(),
-    );
+  test('release workflow signs, builds both platforms and publishes', () {
+    final workflowFile = File('.github/workflows/release.yml');
+    expect(workflowFile.existsSync(), isTrue);
+    final source = workflowFile.readAsStringSync();
+    final workflow = loadYaml(source);
     final jobs = workflow['jobs'] as YamlMap;
-    final validation = jobs['Validate_Version'] as YamlMap;
-    final validationStep = (validation['steps'] as YamlList).last as YamlMap;
 
-    expect(validationStep['run'], contains('tool/check_version.py'));
-    expect(
-      validationStep['env']['RELEASE_TAG'],
-      contains('github.event.release.tag_name'),
-    );
-
-    for (final jobName in [
-      'Build_MacOS',
-      'Build_IOS',
-      'Build_Android',
-      'Build_Windows',
-      'Build_Linux',
-      'Build_Linux_ARM64',
+    expect(source, contains("tags: ['v*']"));
+    expect(jobs.keys, containsAll(['checks', 'android', 'windows', 'publish']));
+    for (final secret in [
+      'ANDROID_KEYSTORE_BASE64',
+      'ANDROID_KEYSTORE_PASSWORD',
+      'ANDROID_KEY_ALIAS',
+      'ANDROID_KEY_PASSWORD',
     ]) {
-      expect((jobs[jobName] as YamlMap)['needs'], contains('Validate_Version'));
+      expect(source, contains(secret));
     }
-    expect((jobs['Release'] as YamlMap)['needs'], contains('Validate_Version'));
-    expect(
-      (jobs['Release'] as YamlMap)['if'],
-      contains("needs.Validate_Version.result == 'success'"),
-    );
-  });
+    expect(source, contains('flutter build apk --release'));
+    expect(source, contains('flutter build windows --release'));
+    expect(source, contains('gh release create'));
+    expect(source, contains('SHA256SUMS'));
 
-  test('release gathers all build artifacts including AppImages', () {
-    final workflow = loadYaml(
-      File('.github/workflows/main.yml').readAsStringSync(),
-    );
-    final steps = workflow['jobs']['Release']['steps'] as YamlList;
-    final download = steps.firstWhere(
-      (step) =>
-          step['uses']?.toString().startsWith('actions/download-artifact@') ==
-          true,
-    )['with'];
-    expect(download['pattern'], '*_build');
-    expect(download['merge-multiple'], isTrue);
-    expect(steps.first['run'], contains('exit 1'));
-    expect(steps.first['if'], contains("needs.*.result"));
-  });
-  test('release uses validated metadata and automated identity gate', () {
-    final workflow = loadYaml(
-      File('.github/workflows/main.yml').readAsStringSync(),
-    );
-    final jobs = workflow['jobs'] as YamlMap;
-    final validation = jobs['Validate_Version'] as YamlMap;
-    final steps = validation['steps'] as YamlList;
-    final gate = steps.firstWhere(
-      (step) => step['run'] == 'python3 tool/check_release_identity.py',
-    );
-    expect(gate['env']['RELEASE_ACTOR'], contains('github.actor'));
-    expect(
-      gate['env']['RELEASE_TRIGGERING_ACTOR'],
-      contains('github.triggering_actor'),
-    );
-    expect(gate['if'], contains('inputs.publish_release'));
-    final release = (jobs['Release']['steps'] as YamlList).firstWhere(
-      (step) =>
-          step['uses']?.toString().startsWith('softprops/action-gh-release@') ==
-          true,
-    );
-    expect(
-      release['with']['body_path'],
-      contains('needs.Validate_Version.outputs.notes'),
-    );
-    expect(
-      release['with']['tag_name'],
-      contains('needs.Validate_Version.outputs.tag'),
-    );
-    expect(release['with']['target_commitish'], contains('github.sha'));
-    expect(release['env']['GITHUB_TOKEN'], contains('secrets.GITHUB_TOKEN'));
+    // The upstream six-platform bot pipeline and its identity gate are gone.
+    final workflows =
+        Directory('.github/workflows')
+            .listSync()
+            .whereType<File>()
+            .map((file) => file.uri.pathSegments.last)
+            .toList()
+          ..sort();
+    expect(workflows, ['release.yml']);
+    expect(File('tool/check_release_identity.py').existsSync(), isFalse);
+    expect(File('alt_store.json').existsSync(), isFalse);
   });
 }

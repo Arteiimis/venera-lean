@@ -88,9 +88,10 @@
 
 ### 多图并排自适应
 
-- `lib/pages/reader/images.dart` 的非对开多图页（`readerScreenPicNumberForPortrait/Landscape > 1`）不再把屏幕均分成 N 份、每张图各自 `contain`，改为整行一起排版：`lib/utils/reader_spread_geometry.dart` 的 `readerRowRects()` 让每张图保持比例、共用一个高度（竖排模式共用一个宽度）、按比例分宽，整行填满视口的宽或高，不溢出也不裁切。竖屏比例与横屏比例相邻时，浪费从"每格都留黑边"变成"整行只在上下留对称黑边"。
-- `readerSpreadRects()` 保留原名并委托给 `readerRowRects()`，双页对开行为不变。
-- 测试：`test/reader_spread_geometry_test.dart` 增加混合比例、竖排、不溢出且必饱和一边的属性用例；`test/reader_multi_image_layout_test.dart` 用竖屏+横屏两图断言等高、无缝拼接、填满宽度。
+- `lib/pages/reader/images.dart` 的非对开多图页（`readerScreenPicNumberForPortrait/Landscape > 1`）不再把屏幕均分成 N 份、每张图各自 `contain`，改为整屏一起排版：`lib/utils/reader_spread_geometry.dart` 的 `readerRowRects()` 在"每张图保持比例、总宽不超过屏幕、单张不超过屏幕"的约束下最大化**最小显示面积**（对面积做水位法二分），于是竖屏图可以吃满高度、横屏图吃掉剩余宽度，各图尽量大、高度允许不同，整组铺满宽度（全部到顶时则自然居中留边），不溢出也不裁切；竖排模式对偶处理（由共宽改为共高）。
+- 翻页不再闪一下再适应：`_resolveImageSize()` 在相邻页仍处于屏幕外时就通过 ImageStream 解析宽高，翻页后的第一帧即为最终布局。
+- `readerSpreadRects()`（双页对开）保持原样：对开书页共享一个高度。
+- 测试：`test/reader_spread_geometry_test.dart` 覆盖竖屏+横屏、等比、竖排与 36 组比例的不变量；`test/reader_multi_image_layout_test.dart` 断言竖屏吃满高度、横屏占剩余宽度、整组铺满视口，以及翻到下一页的第一帧已是最终几何（预解析生效）。
 - 上游碰撞点：`images.dart` 81 次提交，合并时保留本实现。
 - 状态：已完成。
 

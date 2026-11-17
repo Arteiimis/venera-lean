@@ -5,7 +5,7 @@ import 'support/reader_fixture.dart' as fixture;
 
 void main() {
   testWidgets(
-    'a portrait and a landscape page share one height and fill the width',
+    'a portrait page takes the height while a landscape page fills the width',
     (tester) async {
       await fixture.openReader(
         tester,
@@ -24,16 +24,17 @@ void main() {
       final viewport = tester.view.physicalSize / tester.view.devicePixelRatio;
       final union = portrait.expandToInclude(landscape);
 
-      // Equal height, seam in the middle, aspect ratios preserved.
-      expect(portrait.height, closeTo(landscape.height, 0.5));
-      expect(portrait.top, closeTo(landscape.top, 0.5));
+      // The portrait page uses the full height; the landscape page takes the
+      // remaining width, so the pair fills the whole viewport.
+      expect(portrait.height, closeTo(viewport.height, 0.5));
+      expect(portrait.width, closeTo(300, 0.5));
+      expect(landscape.width, closeTo(viewport.width - 300, 0.5));
+      expect(landscape.height, closeTo(landscape.width / 1.5, 0.5));
       expect(portrait.right, closeTo(landscape.left, 0.5));
       expect(portrait.width / portrait.height, closeTo(0.5, 0.01));
       expect(landscape.width / landscape.height, closeTo(1.5, 0.01));
-
-      // The pair fills the width without overflowing the viewport.
       expect(union.width, closeTo(viewport.width, 0.5));
-      expect(union.height, lessThanOrEqualTo(viewport.height + 0.5));
+      expect(union.height, closeTo(viewport.height, 0.5));
       expect(union.left, greaterThanOrEqualTo(-0.5));
       expect(union.top, greaterThanOrEqualTo(-0.5));
 
@@ -42,4 +43,46 @@ void main() {
       await fixture.settle(tester);
     },
   );
+
+  testWidgets('the next page is already laid out when it appears', (
+    tester,
+  ) async {
+    final dynamic state = await fixture.openReader(
+      tester,
+      'galleryLeftToRight',
+      imageSizes: {
+        9: const Size(300, 600),
+        10: const Size(900, 600),
+        11: const Size(900, 600),
+        12: const Size(300, 600),
+      },
+      settings: {'readerScreenPicNumberForLandscape': 2},
+    );
+    await fixture.settle(tester);
+
+    // The aspect ratios of the neighbouring page are resolved while it is
+    // still off screen, so turning the page never shows a provisional layout.
+    expect(state.spreadImageSizes.containsKey(10), isTrue);
+    expect(state.spreadImageSizes.containsKey(11), isTrue);
+
+    state.turnPage(forward: true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final landscape = tester.getRect(
+      find.byKey(const ValueKey('reader-spread-image-11')),
+    );
+    final portrait = tester.getRect(
+      find.byKey(const ValueKey('reader-spread-image-12')),
+    );
+    final viewport = tester.view.physicalSize / tester.view.devicePixelRatio;
+    expect(landscape.width, closeTo(viewport.width - 300, 0.5));
+    expect(landscape.height, closeTo(landscape.width / 1.5, 0.5));
+    expect(portrait.width, closeTo(300, 0.5));
+    expect(portrait.height, closeTo(viewport.height, 0.5));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+    await fixture.settle(tester);
+  });
 }

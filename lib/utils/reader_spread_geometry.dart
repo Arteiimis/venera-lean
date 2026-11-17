@@ -12,16 +12,34 @@ bool isWideReaderImage(Size size) =>
 
 /// A spread has one page height. Images retain their own aspect ratios.
 /// Null slots reserve a matching paper-sized blank for the cover or last page.
-List<Rect> readerSpreadRects(Size viewport, List<Size?> pages) =>
-    readerRowRects(viewport, pages);
+List<Rect> readerSpreadRects(Size viewport, List<Size?> pages) {
+  if (pages.isEmpty ||
+      viewport.isEmpty ||
+      !viewport.width.isFinite ||
+      !viewport.height.isFinite) {
+    return [];
+  }
+  final ratios = _aspectRatios(pages);
+  final totalRatio = ratios.fold<double>(0, (sum, ratio) => sum + ratio);
+  final height = math.min(viewport.height, viewport.width / totalRatio);
+  final top = (viewport.height - height) / 2;
+  var left = (viewport.width - totalRatio * height) / 2;
+  final result = <Rect>[];
+  for (final ratio in ratios) {
+    final rect = Rect.fromLTWH(left, top, height * ratio, height);
+    left = rect.right;
+    result.add(rect);
+  }
+  return result;
+}
 
-/// Lays out several images that share one row (or column) so the group is as
-/// large as the viewport allows without cropping or overlapping.
+/// Lays out the images of one screen so each of them is as large as possible.
 ///
-/// Every image keeps its aspect ratio and shares one height (horizontal rows)
-/// or one width (vertical rows). The shared size is the largest that keeps the
-/// whole group inside the viewport, so the group always fills either the full
-/// width or the full height and the leftover space stays symmetric.
+/// Unlike a book spread, heights may differ: the smallest displayed area is
+/// maximised and every image keeps its own aspect ratio, so a portrait page can
+/// take the full height while a wide neighbour takes the rest of the width.
+/// The group always fills the main axis (the width for horizontal rows) with no
+/// overlap, and an image never exceeds the viewport, so nothing is cropped.
 List<Rect> readerRowRects(
   Size viewport,
   List<Size?> pages, {
@@ -33,33 +51,70 @@ List<Rect> readerRowRects(
       !viewport.height.isFinite) {
     return [];
   }
-  final ratios = _aspectRatios(pages);
+  final horizontal = axis == Axis.horizontal;
+  final cross = horizontal ? viewport.height : viewport.width;
+  final main = horizontal ? viewport.width : viewport.height;
+  final aspects = _aspectRatios(pages);
+  // Cross size per unit of main size for each image.
+  final ratios = [
+    for (final aspect in aspects) horizontal ? aspect : 1 / aspect,
+  ];
+  final sizes = _balancedCrossSizes(ratios, cross, main);
+  final totalMain = sumMainExtents(ratios, sizes);
+  var offset = (main - totalMain) / 2;
   final rects = <Rect>[];
-  if (axis == Axis.horizontal) {
-    final totalRatio = ratios.fold<double>(0, (sum, ratio) => sum + ratio);
-    final height = math.min(viewport.height, viewport.width / totalRatio);
-    final top = (viewport.height - height) / 2;
-    var left = (viewport.width - totalRatio * height) / 2;
-    for (final ratio in ratios) {
-      final rect = Rect.fromLTWH(left, top, height * ratio, height);
-      left = rect.right;
-      rects.add(rect);
-    }
-  } else {
-    final totalInverse = ratios.fold<double>(
-      0,
-      (sum, ratio) => sum + 1 / ratio,
+  for (var i = 0; i < sizes.length; i++) {
+    final crossSize = sizes[i];
+    final mainSize = crossSize * ratios[i];
+    final crossOffset = (cross - crossSize) / 2;
+    rects.add(
+      horizontal
+          ? Rect.fromLTWH(offset, crossOffset, mainSize, crossSize)
+          : Rect.fromLTWH(crossOffset, offset, crossSize, mainSize),
     );
-    final width = math.min(viewport.width, viewport.height / totalInverse);
-    final left = (viewport.width - width) / 2;
-    var top = (viewport.height - totalInverse * width) / 2;
-    for (final ratio in ratios) {
-      final rect = Rect.fromLTWH(left, top, width, width / ratio);
-      top = rect.bottom;
-      rects.add(rect);
-    }
+    offset += mainSize;
   }
   return rects;
+}
+
+/// Total extent of a row along its main axis.
+double sumMainExtents(List<double> ratios, List<double> crossSizes) {
+  var total = 0.0;
+  for (var i = 0; i < ratios.length; i++) {
+    total += ratios[i] * crossSizes[i];
+  }
+  return total;
+}
+
+/// Maximises the smallest displayed area of the group.
+///
+/// Equal areas give `crossSize_i = sqrt(area / ratio_i)`, capped by the viewport
+/// cross size. The area is bisected until the row exactly fills the main axis,
+/// or every image already sits at the full cross size.
+List<double> _balancedCrossSizes(
+  List<double> ratios,
+  double cross,
+  double main,
+) {
+  final full = [for (var i = 0; i < ratios.length; i++) cross];
+  if (sumMainExtents(ratios, full) <= main) {
+    return full;
+  }
+  var low = 0.0;
+  var high = ratios.fold<double>(0, (max, ratio) => math.max(max, ratio));
+  high = high * cross * cross;
+  for (var i = 0; i < 60; i++) {
+    final area = (low + high) / 2;
+    final sizes = [
+      for (final ratio in ratios) math.min(cross, math.sqrt(area / ratio)),
+    ];
+    if (sumMainExtents(ratios, sizes) > main) {
+      high = area;
+    } else {
+      low = area;
+    }
+  }
+  return [for (final ratio in ratios) math.min(cross, math.sqrt(low / ratio))];
 }
 
 List<double> _aspectRatios(List<Size?> pages) {

@@ -311,18 +311,22 @@ class _GalleryModeState extends State<_GalleryMode>
   void _cachePage(int page, bool shouldPreCache) {
     if (isChapterCommentsPage(page)) return;
     var (startIndex, endIndex) = getPageImagesRange(page);
+    final sharesScreen = endIndex - startIndex > 1;
     for (int i = startIndex; i < endIndex; i++) {
-      if (shouldPreCache && reader.twoPageSpread) {
-        _precacheSpreadImage(i);
-      } else if (shouldPreCache) {
-        _precacheImage(i + 1, context);
+      if (shouldPreCache) {
+        // Images that share a screen are positioned by their aspect ratio, so
+        // resolve it while the page is still off screen: the first frame after
+        // a page turn is then already the final layout.
+        _resolveImageSize(i);
+        if (!sharesScreen) _precacheImage(i + 1, context);
       } else {
         _preDownloadImage(i + 1, context);
       }
     }
   }
 
-  void _precacheSpreadImage(int index) {
+  void _resolveImageSize(int index) {
+    if (reader.spreadImageSizes.containsKey(index)) return;
     if (_spreadMetadataStreams.containsKey(index)) return;
     final stream = _createImageProvider(
       index + 1,
@@ -420,6 +424,9 @@ class _GalleryModeState extends State<_GalleryMode>
                 );
 
                 cache(index);
+                for (var i = startIndex; i < endIndex; i++) {
+                  _resolveImageSize(i);
+                }
 
                 photoViewControllers[index] ??= PhotoViewController();
 

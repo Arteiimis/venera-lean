@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:venera/foundation/app_update.dart';
 import 'package:venera/foundation/background_tasks.dart';
 import 'package:venera/pages/settings/settings_page.dart';
 import 'package:venera/utils/translations.dart';
@@ -22,7 +23,7 @@ void main() {
     expect(identical(first, second), isTrue);
     gate.complete(
       const LatestRelease(
-        version: '99.0.0',
+        version: '9999.0.0',
         title: 'New release',
         body: 'notes',
         url: 'https://example.invalid/release',
@@ -32,7 +33,7 @@ void main() {
     final task = BackgroundTasks.instance.latest('app-update-check')!;
     expect(task.status, BackgroundTaskStatus.completed);
     expect(task.onOpenResult, isNotNull);
-    expect(task.message, contains('99.0.0'));
+    expect(task.message, contains('9999.0.0'));
     expect(BackgroundTasks.instance.lastFinished(task.key), isNotNull);
   });
 
@@ -52,5 +53,15 @@ void main() {
     final task = BackgroundTasks.instance.latest('app-update-check')!;
     expect(task.status, BackgroundTaskStatus.failed);
     expect(task.onOpenResult, isNull);
+  });
+
+  test('a repository without published releases is not an error', () async {
+    await startAppUpdateCheck(
+      fetch: () async => throw const NoPublishedReleaseException(),
+    );
+    final task = BackgroundTasks.instance.latest('app-update-check')!;
+    expect(task.status, BackgroundTaskStatus.completed);
+    expect(task.onOpenResult, isNull);
+    expect(task.message, contains('No new version available'));
   });
 }

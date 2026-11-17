@@ -7,6 +7,26 @@ import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/network/app_dio.dart';
 
+/// GitHub repository that publishes this app's releases.
+const String appUpdateRepoOwner = "Arteiimis";
+const String appUpdateRepoName = "venera-lean";
+const String appUpdateRepoSlug = "$appUpdateRepoOwner/$appUpdateRepoName";
+const String appUpdateRepoUrl = "https://github.com/$appUpdateRepoSlug";
+const String appUpdateReleasesApiUrl =
+    "https://api.github.com/repos/$appUpdateRepoSlug/releases/latest";
+const String appUpdateLatestReleaseUrl =
+    "https://github.com/$appUpdateRepoSlug/releases/latest";
+const String appUpdateReleaseDownloadPath =
+    "/$appUpdateRepoSlug/releases/download/";
+
+/// Thrown when the release repository has no published release yet.
+class NoPublishedReleaseException implements Exception {
+  const NoPublishedReleaseException();
+
+  @override
+  String toString() => 'No published release';
+}
+
 class ReleaseAsset {
   const ReleaseAsset({
     required this.name,
@@ -31,7 +51,7 @@ class ReleaseAsset {
     if (uri == null ||
         uri.scheme != 'https' ||
         uri.host != 'github.com' ||
-        !uri.path.startsWith('/venera-app/venera-prime/releases/download/')) {
+        !uri.path.startsWith(appUpdateReleaseDownloadPath)) {
       return null;
     }
     return ReleaseAsset(
@@ -66,9 +86,7 @@ class LatestRelease {
       version: tag.replaceFirst(RegExp(r'^[vV]'), '').split('+').first,
       title: name.isEmpty ? tag : name,
       body: data['body']?.toString().trim() ?? '',
-      url:
-          data['html_url']?.toString() ??
-          'https://github.com/venera-app/venera-prime/releases/latest',
+      url: data['html_url']?.toString() ?? appUpdateLatestReleaseUrl,
       assets: [
         for (final entry
             in (data['assets'] as List? ?? const []).whereType<Map>())

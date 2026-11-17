@@ -83,7 +83,7 @@ class _AboutSettingsState extends State<AboutSettings> {
           title: const Text("GitHub"),
           trailing: const Icon(Icons.open_in_new),
           onTap: () {
-            launchUrlString("https://github.com/venera-app/venera-prime");
+            launchUrlString(appUpdateRepoUrl);
           },
         ).toSliver(),
         ListTile(
@@ -107,15 +107,18 @@ class _AboutSettingsState extends State<AboutSettings> {
 }
 
 Future<LatestRelease?> checkUpdate() async {
-  const url =
-      "https://api.github.com/repos/venera-app/venera-prime/releases/latest";
   final res = await AppDio().get<Map<String, dynamic>>(
-    url,
+    appUpdateReleasesApiUrl,
     options: Options(
       headers: {"Accept": "application/vnd.github+json", "cache-time": "no"},
       responseType: ResponseType.json,
+      // A repository without any published release answers 404.
+      validateStatus: (status) => status != null && status < 500,
     ),
   );
+  if (res.statusCode == 404) {
+    throw const NoPublishedReleaseException();
+  }
   if (res.statusCode != 200 || res.data == null) {
     throw StateError('Release request failed: ${res.statusCode}');
   }
@@ -128,10 +131,19 @@ Future<LatestRelease?> startAppUpdateCheck({
   'app-update-check',
   "Check for updates".tl,
   (task) async {
-    final release = await (fetch ?? checkUpdate)();
-    if (release == null) {
+    final LatestRelease? fetched;
+    try {
+      fetched = await (fetch ?? checkUpdate)();
+    } on NoPublishedReleaseException {
+      task.update(message: "No new version available".tl);
+      return null;
+    }
+    if (fetched == null) {
       throw const FormatException('Invalid release response');
     }
+    // Promoted alias: the analyzer does not promote `fetched` inside the
+    // onOpenResult closure because it is assigned in a try block.
+    final release = fetched;
     if (isNewerAppVersion(release.version, App.version)) {
       task.update(message: '${release.title} (${release.version})');
       task.resultLabel = "View update".tl;

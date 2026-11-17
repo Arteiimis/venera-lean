@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:venera/foundation/app_update.dart';
 import 'package:venera/foundation/app_update_service.dart';
 import 'package:venera/foundation/background_tasks.dart';
@@ -14,8 +15,7 @@ import 'package:venera/utils/translations.dart';
 const _bytes = [1, 2, 3, 4];
 const _asset = ReleaseAsset(
   name: 'venera.apk',
-  url:
-      'https://github.com/venera-app/venera-prime/releases/download/v3/venera.apk',
+  url: 'https://github.com/$appUpdateRepoSlug/releases/download/v3/venera.apk',
   size: 4,
 );
 const _release = LatestRelease(version: '3.0', title: '3.0', body: '', url: '');
@@ -334,7 +334,10 @@ void main() {
         expect(downloader.calls, 1);
         expect(validations, 2);
         expect(installs, 0);
-        expect(restored.readyFile!.path, initial.readyFile!.path);
+        expect(
+          p.normalize(restored.readyFile!.path),
+          p.normalize(initial.readyFile!.path),
+        );
       } finally {
         restoredTasks.dispose();
       }

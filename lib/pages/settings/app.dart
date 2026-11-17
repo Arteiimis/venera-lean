@@ -270,11 +270,6 @@ class _AppSettingsState extends State<AppSettings> {
           actionTitle: 'Set'.tl,
         ).toSliver(),
         _CallbackSetting(
-          title: "Reading statistics".tl,
-          callback: () => context.to(() => const ReadingStatisticsPage()),
-          actionTitle: "Open".tl,
-        ).toSliver(),
-        _CallbackSetting(
           title: "WebDAV config QR code".tl,
           subtitle: "Quickly migrate WebDAV settings to another device.".tl,
           callback: showWebdavConfigQrCode,

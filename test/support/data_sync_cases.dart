@@ -16,7 +16,6 @@ import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/history.dart';
 import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/read_later.dart';
-import 'package:venera/foundation/reading_statistics.dart';
 import 'package:venera/utils/data.dart';
 import 'package:venera/utils/data_sync.dart';
 import 'package:venera/pages/settings/settings_page.dart';
@@ -552,11 +551,6 @@ void registerDataSyncTransportTests({bool device = false}) {
               'page': 1,
             }),
           );
-          void seedStatistics() => ReadingStatisticsManager().recordSession(
-            comic: comic,
-            startedAt: DateTime.now().subtract(const Duration(seconds: 5)),
-            endedAt: DateTime.now(),
-          );
           final image = ImageFavorite(
             1,
             'fixture-image',
@@ -613,14 +607,6 @@ void registerDataSyncTransportTests({bool device = false}) {
               HistoryManager().batchDeleteHistories([
                 ComicID(ComicType.local, comic.id),
               ]);
-            },
-            'statistics remove': () {
-              seedStatistics();
-              ReadingStatisticsManager().deleteComic(comic.id, ComicType.local);
-            },
-            'statistics clear': () {
-              seedStatistics();
-              ReadingStatisticsManager().clear();
             },
             'image favorite add': () =>
                 ImageFavoriteManager().addOrUpdateOrDelete(imageComic()),
@@ -723,7 +709,6 @@ void registerDataSyncTransportTests({bool device = false}) {
           HistoryManager().close();
           LocalFavoritesManager().close();
           ReadLaterManager().close();
-          ReadingStatisticsManager().close();
           await server.close(force: true);
           await listener.cancel();
           await root.delete(recursive: true);

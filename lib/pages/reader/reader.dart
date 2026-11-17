@@ -31,7 +31,6 @@ import 'package:venera/foundation/image_provider/cached_image.dart';
 import 'package:venera/foundation/image_provider/reader_image.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/read_later.dart';
-import 'package:venera/foundation/reading_statistics.dart';
 import 'package:venera/foundation/reader_orientation.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/foundation/res.dart';
@@ -123,12 +122,7 @@ class Reader extends StatefulWidget {
 }
 
 class _ReaderState extends State<Reader>
-    with
-        _ReaderLocation,
-        _ReaderWindow,
-        _VolumeListener,
-        _ImagePerPageHandler,
-        WidgetsBindingObserver {
+    with _ReaderLocation, _ReaderWindow, _VolumeListener, _ImagePerPageHandler {
   @override
   void update() {
     if (mounted) setState(() {});
@@ -414,7 +408,6 @@ class _ReaderState extends State<Reader>
   bool _showWhiteRefreshOverlay = false;
   Timer? _whiteRefreshOverlayTimer;
   bool _whiteRefreshOverlayReady = false;
-  DateTime? _readingSessionStarted;
   bool _markedComplete = false;
 
   var focusNode = FocusNode();
@@ -422,10 +415,6 @@ class _ReaderState extends State<Reader>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _readingSessionStarted = ReadingStatisticsManager().isRecordingEnabled
-        ? DateTime.now()
-        : null;
     mode = ReaderMode.fromKey(
       appdata.settings.getReaderSetting(cid, type.sourceKey, 'readerMode'),
     );
@@ -512,8 +501,6 @@ class _ReaderState extends State<Reader>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _commitReadingSession();
     if (isFullscreen) {
       fullscreen();
     }
@@ -528,30 +515,6 @@ class _ReaderState extends State<Reader>
     PaintingBinding.instance.imageCache.maximumSizeBytes = 100 << 20;
     disposeReaderWindow();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      _commitReadingSession();
-    } else if (state == AppLifecycleState.resumed &&
-        _readingSessionStarted == null &&
-        ReadingStatisticsManager().isRecordingEnabled) {
-      _readingSessionStarted = DateTime.now();
-    }
-  }
-
-  void _commitReadingSession() {
-    final started = _readingSessionStarted;
-    _readingSessionStarted = null;
-    if (started == null || images == null || images!.isEmpty) return;
-    ReadingStatisticsManager().recordSession(
-      comic: widget.history,
-      startedAt: started,
-      endedAt: DateTime.now(),
-    );
   }
 
   void _markReadLaterComplete() {

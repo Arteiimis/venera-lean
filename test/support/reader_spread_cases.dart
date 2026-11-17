@@ -49,7 +49,6 @@ void registerReaderSpreadTests({bool device = false}) {
       appdata.settings['limitImageWidth'] = true;
       appdata.settings['enableClockAndBatteryInfoInReader'] = false;
       appdata.settings['enableTurnPageByVolumeKey'] = false;
-      appdata.settings['recordReadingStatistics'] = false;
       appdata.settings['removeReadLaterOnComplete'] = false;
       appdata.settings['webdav'] = [];
       final local = LocalManager();

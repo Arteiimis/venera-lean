@@ -12,7 +12,6 @@ import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/history.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/foundation/read_later.dart';
-import 'package:venera/foundation/reading_statistics.dart';
 import 'package:venera/utils/archive_security.dart';
 import 'package:venera/utils/restore_files.dart';
 import 'package:venera/utils/ext.dart';
@@ -106,7 +105,6 @@ Future<File> exportAppData([bool sync = true]) async {
         var historyFile = FilePath.join(dataPath, "history.db");
         var localFavoriteFile = FilePath.join(dataPath, "local_favorite.db");
         var readLaterFile = FilePath.join(dataPath, "read_later.db");
-        var statisticsFile = FilePath.join(dataPath, "reading_statistics.db");
         var appdataFile = FilePath.join(
           dataPath,
           sync ? "syncdata.json" : "appdata.json",
@@ -116,11 +114,6 @@ Future<File> exportAppData([bool sync = true]) async {
         addDatabaseSnapshot("history.db", historyFile);
         addDatabaseSnapshot("local_favorite.db", localFavoriteFile);
         addDatabaseSnapshot("read_later.db", readLaterFile, optional: true);
-        addDatabaseSnapshot(
-          "reading_statistics.db",
-          statisticsFile,
-          optional: true,
-        );
         addStableFile("appdata.json", appdataFile);
         final sourceDirectory = Directory(
           FilePath.join(dataPath, "comic_source"),
@@ -170,7 +163,6 @@ Future<List<String>> importAppData(File file, {bool sync = false}) async {
     var historyFile = cacheDir.joinFile("history.db");
     var localFavoriteFile = cacheDir.joinFile("local_favorite.db");
     var readLaterFile = cacheDir.joinFile("read_later.db");
-    var statisticsFile = cacheDir.joinFile("reading_statistics.db");
     var appdataFile = cacheDir.joinFile("appdata.json");
     _validateBackupJson(appdataFile);
     _validateBackupDatabase(historyFile, 'history');
@@ -190,9 +182,6 @@ Future<List<String>> importAppData(File file, {bool sync = false}) async {
     if (await readLaterFile.exists()) {
       _validateBackupDatabase(readLaterFile, 'read_later');
     }
-    if (await statisticsFile.exists()) {
-      _validateBackupDatabase(statisticsFile, 'reading_statistics');
-    }
     // DataSync checks remote snapshot identity. Independent devices can have
     // equal counters with different contents, so the counter is not a gate.
     await _commitBackup(
@@ -200,7 +189,6 @@ Future<List<String>> importAppData(File file, {bool sync = false}) async {
       historyFile,
       localFavoriteFile,
       readLaterFile,
-      statisticsFile,
       appdataFile,
       restoreWebdav: !sync,
       skippedSources: skippedSources,
@@ -315,7 +303,6 @@ Future<void> _commitBackup(
   File historyFile,
   File favoriteFile,
   File readLaterFile,
-  File statisticsFile,
   File appdataFile, {
   required bool restoreWebdav,
   required List<String> skippedSources,
@@ -337,7 +324,6 @@ Future<void> _commitBackup(
   await File(FilePath.join(staging.path, 'syncdata.json')).writeAsString('{}');
   names.add('syncdata.json');
   if (readLaterFile.existsSync()) names.add('read_later.db');
-  if (statisticsFile.existsSync()) names.add('reading_statistics.db');
   final replaceCookies = staging.joinFile('cookie.db').existsSync();
   if (replaceCookies) names.add('cookie.db');
   final sourceDir = Directory(FilePath.join(staging.path, 'comic_source'));
@@ -357,7 +343,6 @@ Future<void> _commitBackup(
     HistoryManager().close();
     LocalFavoritesManager().close();
     ReadLaterManager().close();
-    ReadingStatisticsManager().close();
   }
 
   Future<void> openDatabases() async {
@@ -372,7 +357,6 @@ Future<void> _commitBackup(
     await HistoryManager().init();
     await LocalFavoritesManager().init();
     await ReadLaterManager().init();
-    await ReadingStatisticsManager().init();
   }
 
   var cleanupRollback = false;

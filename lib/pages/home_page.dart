@@ -12,12 +12,10 @@ import 'package:venera/foundation/history.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/read_later.dart';
 import 'package:venera/foundation/random_comic_picker.dart';
-import 'package:venera/foundation/reading_statistics.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/pages/comic_details_page/comic_page.dart';
 import 'package:venera/pages/comic_source_page.dart';
 import 'package:venera/pages/downloading_page.dart';
-import 'package:venera/pages/follow_updates_page.dart';
 import 'package:venera/pages/history_page.dart';
 import 'package:venera/pages/image_favorites_page/image_favorites_page.dart';
 import 'package:venera/pages/search_page.dart';
@@ -29,7 +27,6 @@ import 'package:venera/utils/translations.dart';
 import 'favorites/favorites_page.dart';
 import 'local_comics_page.dart';
 import 'read_later_page.dart';
-import 'reading_statistics_page.dart';
 
 bool _compactHome(BuildContext context) =>
     HomeLayout.fromJson(appdata.settings['homeLayout']).compact;
@@ -55,9 +52,7 @@ class HomePage extends StatelessWidget {
       'random': _RandomComicAction(),
       'history': _History(),
       'readLater': _ReadLater(),
-      'statistics': _ReadingStatisticsPreview(),
       'local': _Local(),
-      'updates': FollowUpdatesWidget(),
       'sources': _ComicSourceWidget(),
       'images': ImageFavorites(),
     };
@@ -300,149 +295,6 @@ class _ReadLaterState extends State<_ReadLater> {
       ),
     );
   }
-}
-
-class _ReadingStatisticsPreview extends StatefulWidget {
-  const _ReadingStatisticsPreview();
-
-  @override
-  State<_ReadingStatisticsPreview> createState() =>
-      _ReadingStatisticsPreviewState();
-}
-
-class _ReadingStatisticsPreviewState extends State<_ReadingStatisticsPreview> {
-  final manager = ReadingStatisticsManager();
-
-  @override
-  void initState() {
-    super.initState();
-    manager.addListener(_update);
-  }
-
-  @override
-  void dispose() {
-    manager.removeListener(_update);
-    super.dispose();
-  }
-
-  void _update() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final week = [
-      for (var i = 6; i >= 0; i--)
-        manager.durationForDay(DateTime(now.year, now.month, now.day - i)),
-    ];
-    final weekTotal = week.fold(0, (sum, value) => sum + value);
-    final maximum = week.fold(0, (max, value) => value > max ? value : max);
-
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: _compactHome(context) ? 3 : 8,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-            width: .6,
-          ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.insights_outlined),
-              title: Text('Reading statistics'.tl),
-              subtitle: Text(
-                manager.isRecordingEnabled
-                    ? '${'Last 7 days'.tl}: ${formatReadingDuration(weekTotal)}'
-                    : 'Reading statistics paused'.tl,
-              ),
-              trailing: const Icon(Icons.arrow_right),
-              onTap: () => context.to(() => const ReadingStatisticsPage()),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _PreviewMetric(
-                      label: 'Today'.tl,
-                      value: formatReadingDuration(week.last),
-                    ),
-                  ),
-                  Expanded(
-                    child: _PreviewMetric(
-                      label: 'Last 7 days'.tl,
-                      value: formatReadingDuration(weekTotal),
-                    ),
-                  ),
-                  Expanded(
-                    child: _PreviewMetric(
-                      label: 'Total'.tl,
-                      value: formatReadingDuration(manager.totalDuration()),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 74,
-                    height: 42,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final value in week)
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 1,
-                              ),
-                              child: FractionallySizedBox(
-                                heightFactor: maximum == 0
-                                    ? .04
-                                    : (value / maximum).clamp(.04, 1.0),
-                                alignment: Alignment.bottomCenter,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.primary
-                                        .withValues(alpha: .72),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewMetric extends StatelessWidget {
-  const _PreviewMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: ts.s12),
-      const SizedBox(height: 4),
-      Text(value, style: ts.s16),
-    ],
-  );
 }
 
 class _SearchBar extends StatelessWidget {

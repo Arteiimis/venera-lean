@@ -312,7 +312,6 @@ class Appdata with Init {
   static const _disableSync = [
     "proxy",
     "authorizationRequired",
-    "recordReadingStatistics",
     "customImageProcessing",
     "webdav",
     "disableSyncFields",
@@ -539,7 +538,6 @@ class Settings with ChangeNotifier {
     'enableClockAndBatteryInfoInReader': true,
     'quickCollectImage': 'No', // No, DoubleTap, Swipe
     'authorizationRequired': false,
-    'recordReadingStatistics': true,
     'onClickFavorite': 'viewDetail', // viewDetail, read
     'enableDnsOverrides': false,
     'dnsOverrides': {},
@@ -552,10 +550,6 @@ class Settings with ChangeNotifier {
     'comicSourceProvenance': <String, dynamic>{},
     'comicSourceOrder': <String>[],
     'preloadImageCount': 4,
-    'followUpdatesFolder': null,
-    'followUpdatesCheckOnStart': true,
-    'followUpdatesCheckIntervalHours': 24,
-    'followUpdatesCheckFixedTime': '',
     'initialPage': '0',
     'comicListDisplayMode': 'paging', // paging, continuous
     'showPageNumberInReader': true,

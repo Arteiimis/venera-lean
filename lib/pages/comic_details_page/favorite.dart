@@ -7,7 +7,6 @@ class _FavoritePanel extends StatefulWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.favoriteItem,
-    this.updateTime,
   });
 
   final String cid;
@@ -22,8 +21,6 @@ class _FavoritePanel extends StatefulWidget {
   final void Function(bool?, bool?) onFavorite;
 
   final FavoriteItem favoriteItem;
-
-  final String? updateTime;
 
   @override
   State<_FavoritePanel> createState() => _FavoritePanelState();
@@ -58,7 +55,6 @@ class _FavoritePanelState extends State<_FavoritePanel>
         isFavorite: widget.isFavorite,
         onFavorite: widget.onFavorite,
         favoriteItem: widget.favoriteItem,
-        updateTime: widget.updateTime,
         comicSource: comicSource,
         hasNetwork: hasNetwork,
         localFolders: localFolders,
@@ -75,7 +71,6 @@ class _FavoriteList extends StatefulWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.favoriteItem,
-    this.updateTime,
     required this.comicSource,
     required this.hasNetwork,
     required this.localFolders,
@@ -87,7 +82,6 @@ class _FavoriteList extends StatefulWidget {
   final bool? isFavorite;
   final void Function(bool?, bool?) onFavorite;
   final FavoriteItem favoriteItem;
-  final String? updateTime;
   final ComicSource comicSource;
   final bool hasNetwork;
   final List<String> localFolders;
@@ -106,7 +100,6 @@ class _FavoriteListState extends State<_FavoriteList> {
       cid: widget.cid,
       type: widget.type,
       favoriteItem: widget.favoriteItem,
-      updateTime: widget.updateTime,
       localFolders: widget.localFolders,
       added: widget.added,
       onFavorite: (local) {
@@ -177,7 +170,10 @@ class _NetworkSectionState extends State<_NetworkSection> {
   void initState() {
     super.initState();
     localIsFavorite = widget.isFavorite;
-    _skeletonWidths = List.generate(3, (_) => 0.3 + math.Random().nextDouble() * 0.5);
+    _skeletonWidths = List.generate(
+      3,
+      (_) => 0.3 + math.Random().nextDouble() * 0.5,
+    );
     if (widget.comicSource.favoriteData!.loadFolders != null) {
       loadFolders();
     } else {
@@ -371,9 +367,12 @@ class _NetworkSectionState extends State<_NetworkSection> {
           var id = entry.key;
           var isAdded = addedFolders.contains(id);
           // When `singleFolderForSingleComic` is `false`, all add and remove buttons are clickable.
-          // When `singleFolderForSingleComic` is `true`, the remove button is always clickable, 
+          // When `singleFolderForSingleComic` is `true`, the remove button is always clickable,
           // while the add button is only clickable if the comic has not been added to any list.
-          var enabled = !(widget.comicSource.favoriteData!.singleFolderForSingleComic && addedFolders.isNotEmpty && !isAdded);
+          var enabled =
+              !(widget.comicSource.favoriteData!.singleFolderForSingleComic &&
+                  addedFolders.isNotEmpty &&
+                  !isAdded);
 
           return ListTile(
             title: Row(
@@ -426,7 +425,8 @@ class _NetworkSectionState extends State<_NetworkSection> {
                         // notify parent so page state updates when closing and reopening panel
                         widget.onFavorite(addedFolders.isNotEmpty);
                         context.showMessage(message: "Success".tl);
-                        if (appdata.settings['autoCloseFavoritePanel'] ?? false) {
+                        if (appdata.settings['autoCloseFavoritePanel'] ??
+                            false) {
                           context.pop();
                         }
                       } else {
@@ -449,7 +449,6 @@ class _LocalSection extends StatefulWidget {
     required this.cid,
     required this.type,
     required this.favoriteItem,
-    this.updateTime,
     required this.localFolders,
     required this.added,
     required this.onFavorite,
@@ -458,7 +457,6 @@ class _LocalSection extends StatefulWidget {
   final String cid;
   final ComicType type;
   final FavoriteItem favoriteItem;
-  final String? updateTime;
   final List<String> localFolders;
   final List<String> added;
   final void Function(bool) onFavorite;
@@ -533,7 +531,6 @@ class _LocalSectionState extends State<_LocalSection> {
                     folder,
                     widget.favoriteItem,
                     null,
-                    widget.updateTime,
                   );
                   setState(() {
                     localAdded.add(folder);
@@ -594,7 +591,7 @@ class _HoverButtonState extends State<_HoverButton> {
     final removeHoverColor = Color.lerp(removeColor, Colors.black, 0.2)!;
     final addColor = context.colorScheme.primary;
     final addHoverColor = Color.lerp(addColor, Colors.black, 0.2)!;
-    
+
     return MouseRegion(
       onEnter: widget.enabled ? (_) => setState(() => isHovered = true) : null,
       onExit: widget.enabled ? (_) => setState(() => isHovered = false) : null,

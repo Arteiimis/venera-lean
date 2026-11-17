@@ -13,20 +13,6 @@ void main() {
     expect(gradle, contains('flutterTarget.endsWith("/listener.dart")'));
     expect(gradle, contains('applicationId = integrationTestBuild ?'));
     expect(gradle, contains('com.github.wgh136.venera.prime.integrationtest'));
-    final script = File(
-      'tool/test_follow_updates_android.sh',
-    ).readAsStringSync();
-    expect(script, contains('dump badging'));
-    expect(script, contains('Refusing to run'));
-    expect(script, contains('trap verify_normal_app EXIT'));
-    expect(
-      script,
-      contains('export ORG_GRADLE_PROJECT_primeIntegrationTest=true'),
-    );
-    expect(
-      script.indexOf('build apk --debug'),
-      lessThan(script.indexOf('test --no-pub -d')),
-    );
   });
 
   test('both Linux AppImages deploy WebKit libraries and subprocesses', () {

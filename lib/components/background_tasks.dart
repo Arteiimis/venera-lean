@@ -10,9 +10,6 @@ String _title(BackgroundTask task) {
   if (task.title.startsWith('Download: ')) {
     return 'Download: @name'.tlParams({'name': task.title.substring(10)});
   }
-  if (task.title.startsWith('Follow Updates: ')) {
-    return 'Follow Updates: @name'.tlParams({'name': task.title.substring(16)});
-  }
   return task.title.tl;
 }
 

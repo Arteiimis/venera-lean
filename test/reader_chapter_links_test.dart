@@ -87,7 +87,6 @@ void main() {
       appdata.settings['enableDoubleTapToZoom'] = false;
       appdata.settings['enableClockAndBatteryInfoInReader'] = false;
       appdata.settings['enableTurnPageByVolumeKey'] = false;
-      appdata.settings['recordReadingStatistics'] = false;
       appdata.settings['removeReadLaterOnComplete'] = false;
       appdata.settings['webdav'] = [];
       final local = LocalManager();

@@ -65,7 +65,6 @@ abstract mixin class _ComicPageActions {
           update();
         },
         favoriteItem: _toFavoriteItem(),
-        updateTime: comic.findUpdateTime(),
       ),
     );
   }
@@ -75,12 +74,7 @@ abstract mixin class _ComicPageActions {
     if (folder is! String) {
       return;
     }
-    LocalFavoritesManager().addComic(
-      folder,
-      _toFavoriteItem(),
-      null,
-      comic.findUpdateTime(),
-    );
+    LocalFavoritesManager().addComic(folder, _toFavoriteItem(), null);
     isAddToLocalFav = true;
     update();
     App.rootContext.showMessage(message: "Added".tl);

@@ -74,7 +74,6 @@ void main() {
           'history.db',
           'local_favorite.db',
           'read_later.db',
-          'reading_statistics.db',
           'cookie.db',
         ]) {
           final db = sqlite3.open('${directory.path}/$name');

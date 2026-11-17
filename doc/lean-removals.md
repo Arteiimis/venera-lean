@@ -28,12 +28,26 @@
 
 ### 阅读统计（Reading statistics）
 
-- 待做。计划删除 `lib/foundation/reading_statistics.dart`、`lib/pages/reading_statistics_page.dart`、首页 `statistics` 模块、设置入口、阅读器计时钩子、`reading_statistics.db` 的备份/WebDAV 条目；保留 `recordReadingStatistics` 设置键与旧数据库文件（不迁移、只忽略）。
-- 上游触碰：`reading_statistics.dart` 3、`reading_statistics_page.dart` 2、`home_page.dart` 62、`utils/data.dart` 17、`reader.dart`（阅读器）。
-- 状态：待做。
+- 删除：`lib/foundation/reading_statistics.dart`、`lib/pages/reading_statistics_page.dart`（整文件）；`lib/foundation/app.dart` 的 `readingStatistics` 实例与 init/close；首页 `statistics` 模块与预览组件（含只给它用的 `_PreviewMetric`）；`home_layout.dart` 的模块项；设置 → 应用里的入口；`lib/pages/reader/reader.dart` 的会话计时（`_readingSessionStarted`、`_commitReadingSession`、`WidgetsBindingObserver` 及 add/removeObserver——此处只服务统计）；`lib/utils/data.dart` 中 `reading_statistics.db` 的导出/校验/回滚/关闭重开；`appdata.dart` 的 `recordReadingStatistics`（设备级同步键 + 默认值）。
+- 保留：用户磁盘上已有的 `reading_statistics.db` 不删（不再读写）；旧备份里多出的该文件在导入时被忽略。
+- 测试：删除 `test/reading_statistics_test.dart`；`test/data_backup_test.dart` 与 `test/support/data_sync_cases.dart` 去掉统计用例；阅读器测试里为关闭统计写的 `recordReadingStatistics` 置位一并删除。
+- 上游触碰：`reading_statistics.dart` 3、`reading_statistics_page.dart` 2、`home_page.dart` 62、`utils/data.dart` 17。
+- 状态：已完成。
 
 ### 追更（Follow Updates）
 
-- 待做。计划删除 `lib/foundation/follow_updates.dart`、`lib/pages/follow_updates_page.dart`、首页 `updates` 模块、`init.dart` 启动检查、`headless.dart` 的 `updatesubscribe` 子命令、收藏夹“检查更新”入口与通知、`tool/test_follow_updates_android.sh` 及其工作流断言；保留 `followUpdates*` 设置键与 `local_favorite.db` 的 `has_new_update`/`last_update_time` 等列（上游备份仍可打开）。
+- 删除：`lib/foundation/follow_updates.dart`、`lib/pages/follow_updates_page.dart`（整文件，含 `FollowUpdatesService`/`getUpdatedComicsAsJson`）；首页 `updates` 模块；`home_layout.dart` 的模块项；`init.dart` 的启动检查与 `_followUpdatesRequested`；`headless.dart` 的 `updatesubscribe` 子命令；`components/background_tasks.dart` 的 “Follow Updates:” 标题映射；`favorites.dart` 的全部追更簿记（`FavoriteItemWithUpdateInfo`、`prepareTableForFollowUpdates`、`updateUpdateTime`、`recordFailedUpdateAttempt`、`updateCheckTime`、`countUpdates`、`getUpdates`、`getComicsWithUpdatesInfo`、`markAsRead`、`onRead` 里的 `has_new_update` 清零、`addComic` 的 `updateTime` 参数）；`comic_details_page` 中把 `findUpdateTime()` 传进收藏面板的链路（`actions.dart`、`favorite.dart` 三个组件的 `updateTime` 字段）；`comic_source/models.dart` 的 `findUpdateTime()` 与只给它用的 `_validateUpdateTime()`；`appdata.dart` 的 4 个 `followUpdates*` 默认值；`tool/test_follow_updates_android.sh` 与 `test/release_workflow_test.dart` 对该脚本的断言。
+- 保留：`local_favorite.db` 的 `has_new_update`/`last_update_time`/`last_check_time`/`last_attempt_time`/`last_update_chapters` 列与旧 `followUpdates*` 设置键——不删表、不删列，上游备份仍能原样导入；不再有任何代码读写它们。
+- 测试：删除 `test/follow_updates_test.dart`、`test/support/follow_updates_cases.dart`、`integration_test/follow_updates_test.dart`；`integration_test/release_regression_test.dart` 去掉 Follow updates 分组与相关 import。
 - 上游触碰：`follow_updates_page.dart` 14、`follow_updates.dart` 9、`favorites.dart` 40、`home_page.dart` 62。四项里冲突面最大。
+- 状态：已完成。
+
+## 批次 2（备份与上游分离，待做）
+
+目标：备份/同步只服务本仓库；对上游的兼容只保留一个一次性迁移入口。
+
+- 导出：manifest 标记本产品（如 `{"format": 2, "product": "venera-lean", "files": [...]}`）。
+- 导入：仅接受本仓库 format 2；format 1（上游/旧版）一律走「从 Venera Prime 迁移」入口，普通导入拒绝并提示。
+- 迁移入口：设置里唯一一项，导入一次上游 `.venera`（数据库 + appdata 设置），忽略已删除功能的数据。
+- WebDAV：文件名加本仓库前缀（如 `lean-<days>-<dataVersion>.venera`），远端列举/保留策略只认自己的前缀，避免与 Prime 混在同一目录。
 - 状态：待做。

@@ -9,7 +9,6 @@ import 'appdata.dart';
 import 'favorites.dart';
 import 'local.dart';
 import 'read_later.dart';
-import 'reading_statistics.dart';
 
 export "widget_utils.dart";
 export "context.dart";
@@ -71,8 +70,6 @@ class _App {
 
   final ReadLaterManager readLater = ReadLaterManager();
 
-  final ReadingStatisticsManager readingStatistics = ReadingStatisticsManager();
-
   void rootPop() {
     rootNavigatorKey.currentState?.maybePop();
   }
@@ -102,11 +99,9 @@ class _App {
     await favorites.init();
     await local.init();
     await readLater.init();
-    await readingStatistics.init();
   }
 
   void closeComponents() {
-    readingStatistics.close();
     readLater.close();
     local.close();
     favorites.close();

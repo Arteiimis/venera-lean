@@ -5,9 +5,7 @@ class HomeLayout {
     'random': 'Random comic',
     'history': 'History',
     'readLater': 'Read later',
-    'statistics': 'Reading statistics',
     'local': 'Local',
-    'updates': 'Follow Updates',
     'sources': 'Comic Source',
     'images': 'Image Favorites',
   };

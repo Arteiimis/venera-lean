@@ -9,7 +9,6 @@ import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/image_provider/local_favorite_image.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/log.dart';
-import 'package:venera/pages/follow_updates_page.dart';
 import 'package:venera/utils/tags_translation.dart';
 import 'dart:io';
 
@@ -216,70 +215,6 @@ class FavoriteItemWithFolderInfo extends FavoriteItem {
       );
 }
 
-class FavoriteItemWithUpdateInfo extends FavoriteItem {
-  String? updateTime;
-
-  DateTime? lastCheckTime;
-
-  /// Most recent failed attempt, separate from the successful baseline.
-  DateTime? lastAttemptTime;
-
-  bool hasNewUpdate;
-
-  FavoriteItemWithUpdateInfo(
-    FavoriteItem item,
-    this.updateTime,
-    this.hasNewUpdate,
-    int? lastCheckTime, {
-    int? lastAttemptTime,
-  }) : lastCheckTime = lastCheckTime == null
-           ? null
-           : DateTime.fromMillisecondsSinceEpoch(lastCheckTime),
-       lastAttemptTime = lastAttemptTime == null
-           ? null
-           : DateTime.fromMillisecondsSinceEpoch(lastAttemptTime),
-       super(
-         id: item.id,
-         name: item.name,
-         coverPath: item.coverPath,
-         author: item.author,
-         type: item.type,
-         tags: item.tags,
-       );
-
-  @override
-  String get description {
-    var updateTime = this.updateTime ?? "Unknown";
-    // Follow-updates markers may include an opaque chapter identity after
-    // the display date (for example `2026-08-26|chapter|en`).
-    if (updateTime.contains('|')) {
-      updateTime = updateTime.split('|').first;
-      // MangaDex markers use a zero-padded ISO date internally. Keep the
-      // marker unchanged for comparisons, but match the app's date display
-      // convention and omit padding from month/day in the visible label.
-      final date = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(updateTime);
-      if (date != null) {
-        updateTime =
-            '${date.group(1)}-${int.parse(date.group(2)!)}-${int.parse(date.group(3)!)}';
-      }
-    }
-    var sourceName = type.comicSource?.name ?? "Unknown";
-    return "$updateTime | $sourceName";
-  }
-
-  @override
-  operator ==(Object other) {
-    return other is FavoriteItemWithUpdateInfo &&
-        other.updateTime == updateTime &&
-        other.hasNewUpdate == hasNewUpdate &&
-        super == other;
-  }
-
-  @override
-  int get hashCode =>
-      super.hashCode ^ updateTime.hashCode ^ hasNewUpdate.hashCode;
-}
-
 class LocalFavoritesManager with ChangeNotifier {
   factory LocalFavoritesManager() =>
       cache ?? (cache = LocalFavoritesManager._create());
@@ -366,14 +301,6 @@ class LocalFavoritesManager with ChangeNotifier {
       }
     }
     await appdata.ensureInit();
-    // Make sure the follow updates folder is ready
-    var followUpdateFolder = appdata.settings['followUpdatesFolder'];
-    if (followUpdateFolder is String &&
-        folderNames.contains(followUpdateFolder)) {
-      prepareTableForFollowUpdates(followUpdateFolder, false);
-    } else {
-      appdata.settings['followUpdatesFolder'] = null;
-    }
     await initCounts();
     isInitialized = true;
   }
@@ -800,12 +727,7 @@ class LocalFavoritesManager with ChangeNotifier {
 
   /// add comic to a folder.
   /// return true if success, false if already exists
-  bool addComic(
-    String folder,
-    FavoriteItem comic, [
-    int? order,
-    String? updateTime,
-  ]) {
+  bool addComic(String folder, FavoriteItem comic, [int? order]) {
     if (!existsFolder(folder)) {
       throw Exception("Folder does not exists");
     }
@@ -855,21 +777,6 @@ class LocalFavoritesManager with ChangeNotifier {
       """,
         [...params, minValue(folder) - 1],
       );
-    }
-    if (updateTime != null) {
-      var columns = _db.select("""
-      pragma table_info($table);
-    """);
-      if (columns.any((element) => element["name"] == "last_update_time")) {
-        _db.execute(
-          """
-          update $table
-          set last_update_time = ?
-          where id == ? and type == ?;
-        """,
-          [updateTime, comic.id, comic.type.value],
-        );
-      }
     }
     if (counts[folder] == null) {
       counts[folder] = count(folder);
@@ -1295,10 +1202,8 @@ class LocalFavoritesManager with ChangeNotifier {
 
   void onRead(String id, ComicType type) async {
     if (appdata.settings['moveFavoriteAfterRead'] == "none") {
-      markAsRead(id, type);
       return;
     }
-    var followUpdatesFolder = appdata.settings['followUpdatesFolder'];
     for (final folder in folderNames) {
       final table = _favoriteTable(folder);
       var rows = _db.select(
@@ -1336,15 +1241,11 @@ class LocalFavoritesManager with ChangeNotifier {
             UPDATE $table
             SET 
               $updateLocationSql
-              ${followUpdatesFolder == folder ? "has_new_update = 0," : ""}
               time = ?
             WHERE id == ? and type == ?;
           """,
           [newTime, id, type.value],
         );
-        if (followUpdatesFolder == folder) {
-          updateFollowUpdatesUI();
-        }
       }
     }
     notifyListeners();
@@ -1513,200 +1414,6 @@ class LocalFavoritesManager with ChangeNotifier {
       } catch (e) {
         Log.error("Import Data", e.toString());
       }
-    }
-  }
-
-  void prepareTableForFollowUpdates(String table, [bool clearData = true]) {
-    final quotedTable = _favoriteTable(table);
-    // check if the table has the column "last_update_time" "has_new_update" "last_check_time"
-    var columns = _db.select("""
-      pragma table_info($quotedTable);
-    """);
-    if (!columns.any((element) => element["name"] == "last_update_time")) {
-      _db.execute("""
-        alter table $quotedTable
-        add column last_update_time TEXT;
-      """);
-    }
-    if (!columns.any((element) => element["name"] == "has_new_update")) {
-      _db.execute("""
-        alter table $quotedTable
-        add column has_new_update int;
-      """);
-    }
-    if (clearData) {
-      _db.execute("""
-        update $quotedTable
-        set has_new_update = 0;
-      """);
-    }
-    if (!columns.any((element) => element["name"] == "last_check_time")) {
-      _db.execute("""
-        alter table $quotedTable
-        add column last_check_time int;
-      """);
-    }
-    if (!columns.any((element) => element['name'] == 'last_attempt_time')) {
-      _db.execute(
-        'ALTER TABLE $quotedTable ADD COLUMN last_attempt_time INTEGER;',
-      );
-    }
-    if (!columns.any((element) => element['name'] == 'last_update_chapters')) {
-      _db.execute(
-        'ALTER TABLE $quotedTable ADD COLUMN last_update_chapters TEXT;',
-      );
-    }
-  }
-
-  bool updateUpdateTime(
-    String folder,
-    String id,
-    ComicType type,
-    String? updateTime, {
-    bool markNewUpdate = true,
-    List<String>? chapterIds,
-  }) {
-    final table = _favoriteTable(folder);
-    final rows = _db.select(
-      """
-      select last_update_time, has_new_update, last_update_chapters from $table
-      where id == ? and type == ?;
-    """,
-      [id, type.value],
-    );
-    // A favorite can be removed while its source request is in flight.
-    if (rows.isEmpty) return false;
-    final old = rows.first;
-    Set<String>? oldChapters;
-    final savedChapters = old['last_update_chapters'] as String?;
-    if (savedChapters != null) {
-      try {
-        oldChapters = (jsonDecode(savedChapters) as List)
-            .whereType<String>()
-            .toSet();
-      } catch (e, s) {
-        Log.error('Check Updates', 'Invalid chapter baseline: $e', s);
-      }
-    }
-    final addedChapter =
-        oldChapters != null &&
-        chapterIds != null &&
-        chapterIds.any((id) => !oldChapters!.contains(id));
-    final changed =
-        markNewUpdate &&
-        ((updateTime != null && old['last_update_time'] != updateTime) ||
-            addedChapter);
-    // Rechecks and baseline migrations must not acknowledge an unread update.
-    final hasNewUpdate = old['has_new_update'] == 1 || changed;
-    _db.execute(
-      """
-      update $table
-      set last_update_time = ?, has_new_update = ?, last_check_time = ?,
-          last_update_chapters = ?, last_attempt_time = NULL
-      where id == ? and type == ?;
-    """,
-      [
-        updateTime ?? old['last_update_time'],
-        hasNewUpdate ? 1 : 0,
-        DateTime.now().millisecondsSinceEpoch,
-        chapterIds == null ? savedChapters : jsonEncode(chapterIds),
-        id,
-        type.value,
-      ],
-    );
-    return changed;
-  }
-
-  void recordFailedUpdateAttempt(String folder, String id, ComicType type) {
-    // The folder or favorite may have been removed while the request ran.
-    if (!existsFolder(folder)) return;
-    final table = _favoriteTable(folder);
-    _db.execute(
-      'UPDATE $table SET last_attempt_time = ? WHERE id == ? AND type == ?;',
-      [DateTime.now().millisecondsSinceEpoch, id, type.value],
-    );
-  }
-
-  void updateCheckTime(String folder, String id, ComicType type) {
-    final table = _favoriteTable(folder);
-    _db.execute(
-      """
-      update $table
-      set last_check_time = ?
-      where id == ? and type == ?;
-    """,
-      [DateTime.now().millisecondsSinceEpoch, id, type.value],
-    );
-  }
-
-  int countUpdates(String folder) {
-    final table = _favoriteTable(folder);
-    return _db.select("""
-      select count(*) as c from $table
-      where has_new_update == 1;
-    """).first['c'];
-  }
-
-  List<FavoriteItemWithUpdateInfo> getUpdates(String folder) {
-    final table = _favoriteTable(folder);
-    if (!existsFolder(folder)) {
-      return [];
-    }
-    var res = _db.select("""
-      select * from $table
-      where has_new_update == 1;
-    """);
-    return res
-        .map(
-          (e) => FavoriteItemWithUpdateInfo(
-            FavoriteItem.fromRow(e),
-            e['last_update_time'],
-            e['has_new_update'] == 1,
-            e['last_check_time'],
-            lastAttemptTime: e['last_attempt_time'],
-          ),
-        )
-        .toList();
-  }
-
-  List<FavoriteItemWithUpdateInfo> getComicsWithUpdatesInfo(String folder) {
-    final table = _favoriteTable(folder);
-    if (!existsFolder(folder)) {
-      return [];
-    }
-    var res = _db.select("""
-      select * from $table;
-    """);
-    return res
-        .map(
-          (e) => FavoriteItemWithUpdateInfo(
-            FavoriteItem.fromRow(e),
-            e['last_update_time'],
-            e['has_new_update'] == 1,
-            e['last_check_time'],
-            lastAttemptTime: e['last_attempt_time'],
-          ),
-        )
-        .toList();
-  }
-
-  void markAsRead(String id, ComicType type) {
-    var folder = appdata.settings['followUpdatesFolder'];
-    if (folder is! String || folder.isEmpty || !existsFolder(folder)) {
-      return;
-    }
-    final table = _favoriteTable(folder);
-    _db.execute(
-      """
-      update $table
-      set has_new_update = 0
-      where id == ? and type == ? and has_new_update == 1;
-    """,
-      [id, type.value],
-    );
-    if (_db.updatedRows > 0) {
-      notifyListeners();
-      updateFollowUpdatesUI();
     }
   }
 

@@ -17,7 +17,6 @@ import 'package:venera/foundation/log.dart';
 import 'package:venera/network/app_dio.dart';
 import 'package:venera/network/cookie_jar.dart';
 import 'package:venera/pages/comic_source_page.dart';
-import 'package:venera/pages/follow_updates_page.dart';
 import 'package:venera/pages/settings/settings_page.dart';
 import 'package:venera/utils/app_links.dart';
 import 'package:venera/utils/handle_text_share.dart';
@@ -138,7 +137,6 @@ final _comicSourcesInitialization = RetryableInitialization();
 final _safInitialization = RetryableInitialization();
 Future<void>? _sourceUpdateCheck;
 bool _sourceManagerAttempted = false;
-bool _followUpdatesRequested = false;
 
 Future<void> _ensureComicSourcesInitialized() =>
     _comicSourcesInitialization.run(_initComicSources);
@@ -241,7 +239,6 @@ Future<void> _checkAppUpdates() async {
 
 void checkUpdates() {
   unawaited(_checkAppUpdates());
-  _followUpdatesRequested = true;
   checkSourceUpdates();
 }
 
@@ -268,7 +265,6 @@ void checkSourceUpdates({bool automatic = false}) {
               return;
             }
             await _ensureComicSourcesInitialized();
-            if (_followUpdatesRequested) FollowUpdatesService.initChecker();
             if (automatic &&
                 appdata.settings['autoUpdateComicSources'] != true) {
               return;

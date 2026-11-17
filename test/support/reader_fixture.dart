@@ -67,7 +67,6 @@ Future<dynamic> openReader(
     'limitImageWidth': true,
     'enableClockAndBatteryInfoInReader': false,
     'enableTurnPageByVolumeKey': false,
-    'recordReadingStatistics': false,
     'removeReadLaterOnComplete': false,
     'enableLongPressToZoom': true,
     'comicSpecificSettings': <String, dynamic>{},

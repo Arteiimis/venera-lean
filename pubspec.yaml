@@ -1,5 +1,5 @@
 name: venera
-description: "A comic app."
+description: "Venera Lean - a lean, independently maintained comic reader."
 publish_to: 'none'
 
 version: 2026.11.0+30001

@@ -9,6 +9,7 @@
 - **功能精简**：移除阅读统计、追更、百宝箱与阅读页边距设置。
 - **备份与上游分离**：备份格式升级为 2（带 `product: venera-lean` 标记），WebDAV 文件名使用 `lean-` 前缀，可与上游备份共存于同一目录；设置 → 应用中提供一次性「从 Venera Prime 迁移」入口。
 - **阅读体验**：本地列表与首页「本地」块点击直接进入阅读（详情保留在右键菜单）；阅读器按空格切换自动翻页，屏幕中央显示暂停/播放状态图标；多图并排时按各自比例自适应铺满屏幕，并在翻页前预解析相邻页尺寸，避免翻页后画面再跳一次。
+- **磁盘繁忙时不再卡顿**：数据库改用 WAL 提交、缓存访问记录批量写回、启动只校验一次数据库结构，Windows 端也不会因为几秒的卡顿被看门狗直接退出。
 - **发布基建**：CI 覆盖 Windows 与 Android 两平台，产出 4 个签名 APK、Windows 便携 ZIP 与 `SHA256SUMS`，推送 `v<版本>` 标签即自动发布。
 
 ## 升级与迁移
@@ -28,7 +29,7 @@
 
 ## 验证范围
 
-- 已执行：`fvm flutter analyze` 无问题；Linux CI 全量单元/组件测试通过（排除 4 项依赖原生库或精确时序的 `environment` 用例）；Windows 本地 debug 构建与手工冒烟；CI 产物经 `aapt2 dump badging` 核对包名、版本号与应用名，经 `apksigner` 核对签名证书指纹与本仓库 keystore 一致；Windows ZIP 内容核对。
+- 已执行：`fvm flutter analyze` 无问题；Linux CI 全量单元/组件测试通过（排除 4 项依赖原生库或精确时序的 `environment` 用例）；Windows 本地 debug/release 构建与手工冒烟（WAL 落盘、e-hentai 图片加载正常）；CI 产物经 `aapt2 dump badging` 核对包名、版本号与应用名，经 `apksigner` 核对签名证书指纹与本仓库 keystore 一致；Windows ZIP 内容核对。
 - 未执行：真机 Android 的安装与更新链路、真实 WebDAV 服务器的端到端同步、Windows 安装包（Inno Setup）验证。
 - Windows 便携包未做代码签名，首次运行时 SmartScreen 可能提示「未知发布者」。
 

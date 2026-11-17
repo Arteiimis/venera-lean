@@ -620,10 +620,7 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
               ? const Icon(Icons.timer)
               : const Icon(Icons.timer_sharp),
           onPressed: () {
-            context.reader.autoPageTurning(
-              context.reader.cid,
-              context.reader.type,
-            );
+            context.reader.toggleAutoPageTurning();
             update();
           },
         ),

@@ -77,3 +77,11 @@
 - 测试：`test/local_comics_page_test.dart` 改为「点击即进阅读器」+「右键菜单仍有 Details」；`test/support/reader_fixture.dart` 补 `ReadLaterManager` 初始化，否则右键菜单构建时会抛 `LateInitializationError`（菜单会查阅读稍后）。
 - 上游碰撞点：`local_comics_page.dart`（2.7.0 起被大改）、`home_page.dart` 62 次提交。
 - 状态：已完成。
+
+### 阅读器空格键切换自动翻页
+
+- `lib/pages/reader/reader.dart`：`onKeyEvent` 只拦截 `KeyDownEvent` 的空格，调用 `toggleAutoPageTurning()`；屏幕中央淡入 900ms 的暂停/播放圆形图标（`AnimatedOpacity`，key `auto-page-turn-indicator`），工具栏按钮改走同一入口（`lib/pages/reader/scaffold.dart`）。
+- 顺带修正：自动翻页走到最后一页自动停止时把 `autoPageTurningTimer` 置空并刷新，避免图标与工具栏仍显示「运行中」。
+- 测试：新增 `test/reader_auto_page_turn_test.dart`（空格开/关、图标状态、900ms 后淡出）。
+- 上游碰撞点：`reader.dart`、`scaffold.dart` 都是上游高频文件（scaffold 67 次提交），合并时保留本改动。
+- 状态：已完成。

@@ -409,6 +409,8 @@ class _ReaderState extends State<Reader>
   Timer? _whiteRefreshOverlayTimer;
   bool _whiteRefreshOverlayReady = false;
   bool _markedComplete = false;
+  bool _autoPageTurnIndicatorVisible = false;
+  Timer? _autoPageTurnIndicatorTimer;
 
   var focusNode = FocusNode();
 
@@ -505,6 +507,7 @@ class _ReaderState extends State<Reader>
       fullscreen();
     }
     autoPageTurningTimer?.cancel();
+    _autoPageTurnIndicatorTimer?.cancel();
     _whiteRefreshOverlayTimer?.cancel();
     focusNode.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -570,6 +573,31 @@ class _ReaderState extends State<Reader>
                       ),
                     ),
                   ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Center(
+                        child: AnimatedOpacity(
+                          key: const ValueKey('auto-page-turn-indicator'),
+                          opacity: _autoPageTurnIndicatorVisible ? 1 : 0,
+                          duration: const Duration(milliseconds: 150),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              autoPageTurningTimer == null
+                                  ? Icons.play_arrow
+                                  : Icons.pause,
+                              size: 40,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               );
             },
@@ -580,10 +608,27 @@ class _ReaderState extends State<Reader>
   }
 
   void onKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.space) {
+      toggleAutoPageTurning();
+      return;
+    }
     if (event.logicalKey == LogicalKeyboardKey.f12 && event is KeyUpEvent) {
       fullscreen();
     }
     _imageViewController?.handleKeyEvent(event);
+  }
+
+  /// Starts or stops automatic page turning and flashes the state icon.
+  void toggleAutoPageTurning() {
+    autoPageTurning(cid, type);
+    _autoPageTurnIndicatorTimer?.cancel();
+    _autoPageTurnIndicatorVisible = true;
+    _autoPageTurnIndicatorTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      _autoPageTurnIndicatorVisible = false;
+      update();
+    });
+    update();
   }
 
   @override
@@ -1126,6 +1171,8 @@ abstract mixin class _ReaderLocation {
       autoPageTurningTimer = Timer.periodic(Duration(seconds: interval), (_) {
         if (page == maxPage) {
           autoPageTurningTimer!.cancel();
+          autoPageTurningTimer = null;
+          update();
         }
         toNextPage();
       });

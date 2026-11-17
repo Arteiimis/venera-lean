@@ -430,9 +430,30 @@ Future<void> _commitBackup(
     await ReadLaterManager().init();
   }
 
+  /// A replaced database must not inherit the write-ahead log of the file it
+  /// replaced: replaying that log over different data corrupts the database.
+  /// Databases that are not being replaced keep their log and their readers.
+  void removeDatabaseSidecars() {
+    for (final name in names.where((name) => name.endsWith('.db'))) {
+      for (final suffix in const ['-wal', '-shm']) {
+        final sidecar = File(FilePath.join(App.dataPath, '$name$suffix'));
+        if (!sidecar.existsSync()) continue;
+        try {
+          sidecar.deleteSync();
+        } on FileSystemException catch (error) {
+          Log.warning(
+            'Import Data',
+            'Could not remove the stale $name$suffix: $error',
+          );
+        }
+      }
+    }
+  }
+
   var cleanupRollback = false;
   try {
     closeDatabases();
+    removeDatabaseSidecars();
     await transaction.apply();
     appdata.syncData(
       jsonDecode(
@@ -449,6 +470,7 @@ Future<void> _commitBackup(
     try {
       closeDatabases();
       await transaction.rollback();
+      removeDatabaseSidecars();
       appdata.restoreMemorySnapshot(snapshot);
       await openDatabases();
       if (replaceSources) await ComicSourceManager().reload();

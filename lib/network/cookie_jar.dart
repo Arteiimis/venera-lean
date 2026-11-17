@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
+import 'package:venera/foundation/db.dart';
 import 'package:venera/foundation/log.dart';
 
 class CookieJarSql {
@@ -17,7 +18,7 @@ class CookieJarSql {
 
   void init() {
     if (_isOpen) return;
-    _db = sqlite3.open(path);
+    _db = openAppDatabase(path);
     _isOpen = true;
     _db.execute('''
       CREATE TABLE IF NOT EXISTS cookies (

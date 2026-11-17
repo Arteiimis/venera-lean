@@ -51,7 +51,9 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project)
 FlutterWindow::~FlutterWindow() {}
 
 void monitorUIThread() {
-    const auto timeout = std::chrono::seconds(5);
+    // A saturated disk can block a synchronous sqlite call for seconds; only
+    // treat a stall as a dead UI thread when it is clearly not coming back.
+    const auto timeout = std::chrono::seconds(30);
 
     while (mainThreadAlive.load()) {
         auto now = std::chrono::steady_clock::now();

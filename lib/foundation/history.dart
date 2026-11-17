@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart' show ChangeNotifier;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:venera/foundation/comic_source/comic_source.dart';
 import 'package:venera/foundation/comic_type.dart';
+import 'package:venera/foundation/db.dart';
 import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/image_provider/image_favorites_provider.dart';
 import 'package:venera/foundation/log.dart';
@@ -237,9 +238,8 @@ class HistoryManager with ChangeNotifier {
     if (isInitialized) return;
     final dbPath = "${App.dataPath}/history.db";
     try {
-      _db = sqlite3.open(dbPath);
-      final integrity = _db.select('PRAGMA integrity_check;');
-      if (integrity.isEmpty || integrity.first[0] != 'ok') {
+      _db = openAppDatabase(dbPath);
+      if (!verifyAppDatabase(_db, dbPath)) {
         throw StateError('history database integrity check failed');
       }
       _db.execute("""
@@ -271,7 +271,7 @@ class HistoryManager with ChangeNotifier {
         '$dbPath.corrupt.${DateTime.now().millisecondsSinceEpoch}',
       );
       File(dbPath).renameSync(backup.path);
-      _db = sqlite3.open(dbPath);
+      _db = openAppDatabase(dbPath);
       _db.execute("""
         create table history (
           id text not null, title text, subtitle text, cover text,

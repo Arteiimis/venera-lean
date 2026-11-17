@@ -10,6 +10,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:xml/xml.dart';
 import 'package:venera/foundation/comic_source/comic_source.dart';
 import 'package:venera/foundation/background_tasks.dart';
+import 'package:venera/foundation/db.dart';
 import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/log.dart';
@@ -381,9 +382,8 @@ class LocalManager with ChangeNotifier {
     if (isInitialized) return;
     final dbPath = '${App.dataPath}/local.db';
     try {
-      _db = sqlite3.open(dbPath);
-      final integrity = _db.select('PRAGMA integrity_check;');
-      if (integrity.isEmpty || integrity.first[0] != 'ok') {
+      _db = openAppDatabase(dbPath);
+      if (!verifyAppDatabase(_db, dbPath)) {
         throw StateError('local database integrity check failed');
       }
       _db.execute('''
@@ -416,7 +416,7 @@ class LocalManager with ChangeNotifier {
         '$dbPath.corrupt.${DateTime.now().millisecondsSinceEpoch}',
       );
       File(dbPath).renameSync(backup.path);
-      _db = sqlite3.open(dbPath);
+      _db = openAppDatabase(dbPath);
       _db.execute('''
         CREATE TABLE comics (
           id TEXT NOT NULL, title TEXT NOT NULL, subtitle TEXT NOT NULL,

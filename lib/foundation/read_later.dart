@@ -4,6 +4,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/comic_source/comic_source.dart';
 import 'package:venera/foundation/comic_type.dart';
+import 'package:venera/foundation/db.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/utils/data_sync.dart';
 import 'package:venera/utils/io.dart';
@@ -99,9 +100,8 @@ class ReadLaterManager with ChangeNotifier {
     if (isInitialized) return;
     final dbPath = FilePath.join(App.dataPath, 'read_later.db');
     try {
-      _db = sqlite3.open(dbPath);
-      final integrity = _db.select('PRAGMA integrity_check;');
-      if (integrity.isEmpty || integrity.first[0] != 'ok') {
+      _db = openAppDatabase(dbPath);
+      if (!verifyAppDatabase(_db, dbPath)) {
         throw StateError('read later database integrity check failed');
       }
     } catch (e, s) {
@@ -118,7 +118,7 @@ class ReadLaterManager with ChangeNotifier {
       );
       final old = File(dbPath);
       if (old.existsSync()) await old.rename(backup.path);
-      _db = sqlite3.open(dbPath);
+      _db = openAppDatabase(dbPath);
     }
     // A valid older schema needs migration, not corrupt-database recovery.
     _createTable();

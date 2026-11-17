@@ -154,12 +154,20 @@ void main() {
       final cookies = SingleInstanceCookieJar('${directory.path}/cookie.db');
       final uri = Uri.parse('https://example.test/login');
       cookies.saveFromResponse(uri, [Cookie('session', 'fixture-session')]);
+      // A legacy format-1 backup stores the raw database file, so the fixture
+      // must be checkpointed out of the write-ahead log before it is read.
+      cookies.dispose();
       final cookieBytes = File(cookies.path).readAsBytesSync();
+      cookies.init();
       cookies.deleteAll();
 
+      // A legacy format-1 backup stores the raw database file, so the fixture
+      // must be checkpointed out of the write-ahead log before it is read.
+      manager.close();
       final databaseBytes = File(
         '${directory.path}/read_later.db',
       ).readAsBytesSync();
+      await manager.init();
       final completeBackup = await _archive(
         '${directory.path}/complete.venera',
         {

@@ -102,3 +102,16 @@
 - 测试：新增 `test/reader_auto_page_turn_test.dart`（空格开/关、图标状态、900ms 后淡出）。
 - 上游碰撞点：`reader.dart`、`scaffold.dart` 都是上游高频文件（scaffold 67 次提交），合并时保留本改动。
 - 状态：已完成。
+
+## 批次 6 磁盘繁忙时的卡顿与闪退
+
+背景：系统磁盘被其它程序占满时，界面会明显卡顿，Windows 上偶尔直接退出（无报错、退出码 0）。原因是 UI isolate 上的同步 sqlite 调用，加上默认的回滚日志(synchronous=FULL)在每次提交都会 fsync 日志与数据库文件——磁盘一慢，每一次历史/收藏/缓存写入都会阻塞帧；Windows runner 的看门狗在 UI 线程心跳停 5 秒时 `std::exit(0)`，于是表现为「闪退」。
+
+- `lib/foundation/db.dart`：新增 `openAppDatabase()`，所有应用数据库（history、local_favorite、read_later、cookie、cache、local）改为以 `journal_mode=WAL` + `synchronous=NORMAL` + `busy_timeout=5000` 打开。WAL 把提交留在日志里，不再每次 fsync；进程崩溃仍然安全（掉电可能丢最后几个事务）。上游合并时保留：上游仍是默认回滚日志。
+- `lib/foundation/cache_manager.dart`：缓存命中不再每次 `UPDATE last_access`，改为内存批量（32 条或清理前）一次事务写回；清理时若候选在此期间被读过则跳过删除。
+- `lib/foundation/db.dart`：`verifyAppDatabase()` 用 `PRAGMA quick_check` 加上「文件大小:mtime」标记，只在数据库文件变化后做一次结构校验（原来是每次启动全量 `integrity_check`，磁盘慢时会拖住启动）。
+- `lib/utils/data.dart`：恢复备份时，先把被替换数据库的 `-wal`/`-shm` 清掉再换文件（否则旧日志回放到新数据会损坏数据库），清理失败只告警。
+- `windows/runner/flutter_window.cpp`：看门狗超时 5s -> 30s，避免磁盘抖动导致静默退出。
+- 测试：`test/app_database_test.dart`（WAL/同步级别/busy_timeout、校验标记、损坏文件）；`test/data_backup_test.dart` 的 legacy 夹具改为先 checkpoint 再读原始数据库文件。
+- 已知副作用：WAL 期间 sqlite 持有的文件句柄不共享删除，Windows 上「测试结束删临时目录」这类操作若还有连接存活会报 errno 32（仅影响少数本地测试，Linux CI 不受影响）；数据库目录里会多出 `-wal`/`-shm`/`.verified` 文件。
+- 状态：已完成。

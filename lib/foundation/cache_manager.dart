@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'app.dart';
+import 'db.dart';
 import 'log.dart';
 
 class CacheCleanupProgress {
@@ -44,6 +45,11 @@ class CacheManager {
   bool _closed = false;
   int dir = 0;
 
+  /// Access bookkeeping is batched: one write per displayed image would fsync
+  /// the cache database per frame while scrolling.
+  final Map<String, List<int>> _pendingTouches = {};
+  static const _touchBatchSize = 32;
+
   int get currentSize => _currentSize;
   ValueListenable<int> get sizeListenable => _size;
   int get retentionDays => _retentionDays;
@@ -62,7 +68,7 @@ class CacheManager {
     required String databasePath,
     DateTime Function()? now,
   }) : _path = directory,
-       _db = sqlite3.open(databasePath),
+       _db = openAppDatabase(databasePath),
        _now = now ?? DateTime.now {
     Directory(_path).createSync(recursive: true);
     _db.execute('''
@@ -247,12 +253,32 @@ class CacheManager {
       return null;
     }
     final ttl = _ttl(row);
-    _db.execute('UPDATE cache SET last_access = ?, expires = ? WHERE key = ?', [
-      now,
-      now + (ttl ?? 0),
-      key,
-    ]);
+    _pendingTouches[key] = [now, now + (ttl ?? 0)];
+    if (_pendingTouches.length >= _touchBatchSize) {
+      _flushTouches();
+    }
     return _file(row);
+  }
+
+  /// Writes the buffered access times in one transaction.
+  void _flushTouches() {
+    if (_pendingTouches.isEmpty) return;
+    final pending = Map.of(_pendingTouches);
+    _pendingTouches.clear();
+    _db.execute('BEGIN;');
+    try {
+      for (final entry in pending.entries) {
+        _db.execute(
+          'UPDATE cache SET last_access = ?, expires = ? WHERE key = ?',
+          [entry.value[0], entry.value[1], entry.key],
+        );
+      }
+      _db.execute('COMMIT;');
+    } catch (_) {
+      _db.execute('ROLLBACK;');
+      _pendingTouches.addAll(pending);
+      rethrow;
+    }
   }
 
   /// Prefer readCache or withCacheFile: their leases include the entire read.
@@ -313,10 +339,12 @@ class CacheManager {
     // Wait outside the operation queue: foreground reads/writes remain free
     // to run while reconciliation discovers files and corrects accounting.
     await _reconciling;
-    final rows = await _enqueue(
-      () async =>
-          _db.select('SELECT * FROM cache ORDER BY last_access ASC').toList(),
-    );
+    final rows = await _enqueue(() async {
+      _flushTouches();
+      return _db
+          .select('SELECT * FROM cache ORDER BY last_access ASC')
+          .toList();
+    });
     final unmanaged = Map.of(_unmanaged);
     var checked = 0;
     var deleted = 0;
@@ -350,6 +378,8 @@ class CacheManager {
       await _enqueue(() async {
         final row = _row(candidate['key'] as String);
         if (row == null || row['name'] != candidate['name']) return;
+        // A read during this cleanup refreshed the entry; keep it.
+        if (_pendingTouches.containsKey(candidate['key'])) return;
         final expired = _expired(row, _now().millisecondsSinceEpoch);
         final overLimit =
             _currentSize > _limitSize &&
@@ -379,6 +409,7 @@ class CacheManager {
   Future<void> clear() async {
     await _reconciling;
     return _enqueue(() async {
+      _pendingTouches.clear();
       for (final row in _db.select('SELECT * FROM cache')) {
         await _remove(row);
       }
@@ -397,6 +428,7 @@ class CacheManager {
     await _cleaning;
     _closed = true;
     await _tail;
+    _flushTouches();
     _db.dispose();
     _size.dispose();
   }

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/image_provider/local_favorite_image.dart';
+import 'package:venera/foundation/db.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/utils/tags_translation.dart';
@@ -261,7 +262,7 @@ class LocalFavoritesManager with ChangeNotifier {
 
   Future<void> _initInternal() async {
     counts = {};
-    _db = sqlite3.open("${App.dataPath}/local_favorite.db");
+    _db = openAppDatabase("${App.dataPath}/local_favorite.db");
     _db.execute("""
       create table if not exists folder_order (
         folder_name text primary key,

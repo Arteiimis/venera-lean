@@ -536,48 +536,45 @@ class _GalleryModeState extends State<_GalleryMode>
     final reverse = reader.mode == ReaderMode.galleryRightToLeft;
     // Keep the original image index when reversing visual order. Network
     // sources can use that index to resolve an image request.
-    var slots = List<int?>.generate(images.length, (i) => i);
-    if (reader.twoPageSpread && slots.length == 1) {
-      slots = singleCover ? [null, 0] : [0, null];
-    }
+    var slots = List<int>.generate(images.length, (i) => i);
     if (reverse) slots = slots.reversed.toList();
-    final children = <Widget>[];
-    for (var slot = 0; slot < slots.length; slot++) {
-      final imageIndex = slots[slot];
-      children.add(
-        Expanded(
-          child: imageIndex == null
-              ? const SizedBox.expand(key: ValueKey('reader-spread-blank'))
-              : ComicImage(
-                  key: ValueKey(
-                    'reader-spread-image-${startIndex + imageIndex + 1}',
+    // Layout the row (or column) as one group: every image keeps its aspect
+    // ratio at a shared height, so a portrait and a landscape page fill the
+    // viewport together instead of each being letterboxed in its own slot.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rects = readerRowRects(constraints.biggest, [
+          for (final slot in slots) reader.spreadImageSizes[startIndex + slot],
+        ], axis: axis);
+        return SizedBox.expand(
+          child: Stack(
+            children: [
+              for (var i = 0; i < rects.length; i++)
+                Positioned.fromRect(
+                  rect: rects[i],
+                  child: ComicImage(
+                    key: ValueKey(
+                      'reader-spread-image-${startIndex + slots[i] + 1}',
+                    ),
+                    image: _createImageProviderFromKey(
+                      images[slots[i]],
+                      context,
+                      startIndex + slots[i] + 1,
+                    ),
+                    width: rects[i].width,
+                    height: rects[i].height,
+                    fit: BoxFit.contain,
+                    onImageSize: (size) =>
+                        _queueSpreadSize(startIndex + slots[i], size),
+                    onInit: (state) => imageStates.add(state),
+                    onDispose: (state) => imageStates.remove(state),
                   ),
-                  width: double.infinity,
-                  height: double.infinity,
-                  image: _createImageProviderFromKey(
-                    images[imageIndex],
-                    context,
-                    startIndex + imageIndex + 1,
-                  ),
-                  fit: BoxFit.contain,
-                  alignment: slots.length != 2
-                      ? Alignment.center
-                      : axis == Axis.vertical
-                      ? (slot == 0
-                            ? Alignment.bottomCenter
-                            : Alignment.topCenter)
-                      : (slot == 0
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft),
-                  onInit: (state) => imageStates.add(state),
-                  onDispose: (state) => imageStates.remove(state),
                 ),
-        ),
-      );
-    }
-    return axis == Axis.vertical
-        ? Column(children: children)
-        : Row(children: children);
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildBookSpread(

@@ -32,6 +32,7 @@ Future<dynamic> openReader(
   WidgetTester tester,
   String mode, {
   Map<int, Size> imageSizes = const {},
+  Map<String, dynamic> settings = const {},
 }) async {
   tester.view.physicalSize = const Size(1000, 600);
   tester.view.devicePixelRatio = 1;
@@ -75,6 +76,7 @@ Future<dynamic> openReader(
     'deviceId': 'reader-fixture-device',
     'webdav': <String>[],
   };
+  values.addAll(settings);
   final previous = {for (final key in values.keys) key: appdata.settings[key]};
   for (final entry in values.entries) {
     appdata.settings[entry.key] = entry.value;

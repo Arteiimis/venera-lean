@@ -5,7 +5,7 @@ import 'package:venera/foundation/appdata.dart';
 import 'package:venera/utils/data_sync.dart';
 import 'package:venera/foundation/res.dart';
 import 'package:venera/pages/reader/reader.dart';
-import 'reader_page_margin_test.dart' as fixture;
+import 'support/reader_fixture.dart' as fixture;
 
 class _NoDataSync extends Fake implements DataSync {
   @override

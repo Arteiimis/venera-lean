@@ -11,9 +11,8 @@ class _ReaderScaffold extends StatefulWidget {
 
 class _ReaderScaffoldState extends State<_ReaderScaffold> {
   bool _isOpen = false;
-  bool _showPageMargin = false;
 
-  double get bottomBarHeight => kBottomBarHeight + (_showPageMargin ? 56 : 0);
+  double get bottomBarHeight => kBottomBarHeight;
 
   static const kTopBarHeight = 56.0;
 
@@ -530,13 +529,6 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
             ];
           },
         ),
-      IconButton(
-        key: const Key('reader-page-margin-toggle'),
-        tooltip: 'Page margin'.tl,
-        isSelected: _showPageMargin,
-        icon: const Icon(Icons.horizontal_distribute),
-        onPressed: () => setState(() => _showPageMargin = !_showPageMargin),
-      ),
       if (context.reader.imagesPerPage > 1) ...[
         IconButton(
           key: const Key('reader-previous-image'),
@@ -661,7 +653,6 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
       height: bottomBarHeight,
       child: Column(
         children: [
-          if (_showPageMargin) buildPageMargin(),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -758,78 +749,6 @@ class _ReaderScaffoldState extends State<_ReaderScaffold> {
   }
 
   var sliderFocus = FocusNode();
-
-  void setAppearanceSetting(String key, dynamic value) {
-    final reader = context.reader;
-    if (appdata.settings.isComicSpecificSettingsEnabled(
-      reader.cid,
-      reader.type.sourceKey,
-    )) {
-      appdata.settings.setReaderSetting(
-        reader.cid,
-        reader.type.sourceKey,
-        key,
-        value,
-      );
-    } else if (appdata.settings.isDeviceSpecificSettingsEnabled()) {
-      appdata.settings.setDeviceReaderSetting(key, value);
-    } else {
-      appdata.settings[key] = value;
-    }
-  }
-
-  Widget buildPageMargin() {
-    final reader = context.reader;
-    final specific = appdata.settings.isComicSpecificSettingsEnabled(
-      reader.cid,
-      reader.type.sourceKey,
-    );
-    final enabled =
-        appdata.settings.getReaderSetting(
-          reader.cid,
-          reader.type.sourceKey,
-          'readerPageMarginEnabled',
-        ) ==
-        true;
-    return SizedBox(
-      key: const Key('reader-page-margin-controls'),
-      height: 56,
-      child: Row(
-        children: [
-          const SizedBox(width: 16),
-          Tooltip(
-            message: 'Page margin'.tl,
-            child: Switch(
-              value: enabled,
-              onChanged: (value) {
-                setAppearanceSetting('readerPageMarginEnabled', value);
-                reader.update();
-                update();
-                unawaited(appdata.saveData());
-              },
-            ),
-          ),
-          Expanded(
-            child: ReaderPageMarginSetting(
-              comicId: specific ? reader.cid : null,
-              comicSource: specific ? reader.type.sourceKey : null,
-              useDeviceSettings:
-                  !specific &&
-                  appdata.settings.isDeviceSpecificSettingsEnabled(),
-              compact: true,
-              onChanged: () {
-                if (!enabled) {
-                  setAppearanceSetting('readerPageMarginEnabled', true);
-                }
-                reader.update();
-                update();
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget buildSlider() {
     // Clamp page to maxPage (excluding chapter comments page)

@@ -538,8 +538,6 @@ void main() {
             'readerMode': mode.key,
             'enablePageAnimation': false,
             'readerTwoPageSpread': false,
-            'readerPageMarginEnabled': reversed,
-            'readerPageMarginPercent': 15.0,
             'readerScreenPicNumberForLandscape': 1,
             'readerScreenPicNumberForPortrait': 1,
             'limitImageWidth': false,

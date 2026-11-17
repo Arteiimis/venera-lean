@@ -15,7 +15,6 @@ import '../favorites_update_test.dart' as favorites;
 import '../history_refresh_background_test.dart' as history;
 import '../loading_dialog_background_test.dart' as loading;
 import '../network_favorite_import_background_test.dart' as network;
-import '../reader_page_margin_test.dart' as reader;
 import 'test_translations.dart';
 
 /// Only widget tests are registered here. No application initialization, real
@@ -112,7 +111,6 @@ void registerBackgroundFeatureTests() {
     },
   );
 
-  group('Reader margins (4)', reader.main);
   group('Task overlay (3)', overlay.main);
   group('Loading dialog background lifecycle (3)', loading.main);
   group('Favorite metadata refresh (2)', favorites.main);

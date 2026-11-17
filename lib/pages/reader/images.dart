@@ -179,8 +179,6 @@ class _GalleryModeState extends State<_GalleryMode>
 
   var photoViewControllers = <int, PhotoViewController>{};
 
-  double? _lastPageMargin;
-  final _unmarginedInitialScales = <int, double>{};
   final _pendingSpreadSizes = <int, Size>{};
   bool _spreadSizeUpdateScheduled = false;
   Timer? _spreadSizeRetry;
@@ -371,30 +369,6 @@ class _GalleryModeState extends State<_GalleryMode>
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportSize = constraints.biggest;
-        final margin = readerPageMargin(reader.cid, reader.type.sourceKey);
-        final previousMargin = _lastPageMargin;
-        _lastPageMargin = margin;
-        if (previousMargin != null && previousMargin != margin) {
-          final ratio = (1 - margin * 2) / (1 - previousMargin * 2);
-          for (final entry in photoViewControllers.entries) {
-            final (start, end) = getPageImagesRange(entry.key);
-            if (end - start != 1 || reader.twoPageSpread) continue;
-            final scale = entry.value.scale;
-            if (scale == null) continue;
-            final initialScale = entry.value.getInitialScale?.call();
-            if (initialScale != null) {
-              _unmarginedInitialScales.putIfAbsent(
-                entry.key,
-                () => initialScale / (1 - previousMargin * 2),
-              );
-            }
-            // PhotoView retains its scale when only initialScale changes.
-            entry.value.updateMultiple(
-              scale: scale * ratio,
-              position: entry.value.position * ratio,
-            );
-          }
-        }
         return Listener(
           onPointerDown: (event) {
             fingers++;
@@ -453,9 +427,6 @@ class _GalleryModeState extends State<_GalleryMode>
                     (pageImages.length == 1 && !reader.twoPageSpread)) {
                   return PhotoViewGalleryPageOptions(
                     filterQuality: FilterQuality.medium,
-                    initialScale: margin == 0
-                        ? null
-                        : PhotoViewComputedScale.contained * (1 - margin * 2),
                     controller: photoViewControllers[index],
                     imageProvider: _createImageProviderFromKey(
                       pageImages[0],
@@ -477,17 +448,11 @@ class _GalleryModeState extends State<_GalleryMode>
                   controller: photoViewControllers[index],
                   minScale: PhotoViewComputedScale.contained * 1.0,
                   maxScale: PhotoViewComputedScale.covered * 10.0,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: viewportSize.width * margin,
-                      vertical: viewportSize.height * margin,
-                    ),
-                    child: buildPageImages(
-                      pageImages,
-                      startIndex,
-                      singleCover:
-                          index == 1 && reader.imageLayout.firstPageCount == 1,
-                    ),
+                  child: buildPageImages(
+                    pageImages,
+                    startIndex,
+                    singleCover:
+                        index == 1 && reader.imageLayout.firstPageCount == 1,
                   ),
                 );
               }
@@ -548,7 +513,6 @@ class _GalleryModeState extends State<_GalleryMode>
               for (var key in keys) {
                 if (key != i) {
                   photoViewControllers.remove(key);
-                  _unmarginedInitialScales.remove(key);
                 }
               }
             },
@@ -779,11 +743,6 @@ class _GalleryModeState extends State<_GalleryMode>
   double? _longPressInitialScale;
 
   double? initialScaleForPage() {
-    final unmarginedScale = _unmarginedInitialScales[reader.page];
-    if (unmarginedScale != null) {
-      return unmarginedScale *
-          (1 - readerPageMargin(reader.cid, reader.type.sourceKey) * 2);
-    }
     return photoViewControllers[reader.page]?.getInitialScale?.call();
   }
 
@@ -1268,17 +1227,8 @@ class _ContinuousModeState extends State<_ContinuousMode>
   }
 
   Widget _buildImages(BuildContext context, Size viewport) {
-    final margin = readerPageMargin(reader.cid, reader.type.sourceKey);
-    final marginEnabled =
-        appdata.settings.getReaderSetting(
-          reader.cid,
-          reader.type.sourceKey,
-          'readerPageMarginEnabled',
-        ) ==
-        true;
     final imageWidth =
-        !marginEnabled &&
-            appdata.settings.getReaderSetting(
+        appdata.settings.getReaderSetting(
                   reader.cid,
                   reader.type.sourceKey,
                   'limitImageWidth',
@@ -1287,8 +1237,8 @@ class _ContinuousModeState extends State<_ContinuousMode>
             viewport.width / viewport.height > 0.7 &&
             reader.mode == ReaderMode.continuousTopToBottom
         ? viewport.height * 0.7
-        : viewport.width * (1 - margin * 2);
-    final imageHeight = viewport.height * (1 - margin * 2);
+        : viewport.width;
+    final imageHeight = viewport.height;
     _preservePositionOnResize(
       viewport,
       reader.mode == ReaderMode.continuousTopToBottom

@@ -513,8 +513,6 @@ class Settings with ChangeNotifier {
     'readerMode': 'galleryLeftToRight', // values of [ReaderMode]
     'readerTwoPageSpread': false,
     'readerSpreadOverrides': <String, dynamic>{},
-    'readerPageMarginEnabled': false,
-    'readerPageMarginPercent': 19.3,
     'readerScreenPicNumberForLandscape': 1, // 1 - 5
     'readerScreenPicNumberForPortrait': 1, // 1 - 5
     'enableTapToTurnPages': true,

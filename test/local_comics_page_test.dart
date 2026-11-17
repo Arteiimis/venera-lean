@@ -9,7 +9,7 @@ import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/pages/local_comics_page.dart';
 import 'package:venera/pages/reader/reader.dart';
-import 'reader_page_margin_test.dart' as fixture;
+import 'support/reader_fixture.dart' as fixture;
 
 void main() {
   testWidgets(
@@ -62,7 +62,7 @@ void main() {
       await tester.tap(find.text('Save'));
       await fixture.settle(tester);
       expect(local.library.folders.single.name, 'Offline');
-      await tester.longPress(find.text('Margin test'));
+      await tester.longPress(find.text('Reader fixture'));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(MenuButton).first);
       await tester.pumpAndSettle();
@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Offline'));
       await fixture.settle(tester);
-      await tester.tap(find.text('Margin test'));
+      await tester.tap(find.text('Reader fixture'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Second chapter'));
       await fixture.settle(tester);

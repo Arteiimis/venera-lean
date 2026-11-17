@@ -27,7 +27,7 @@ void main() {
         final cache = await getTemporaryDirectory();
         expect(
           cache.path.split('/'),
-          contains('com.github.wgh136.venera.prime.integrationtest'),
+          contains('io.github.arteiimis.venera.integrationtest'),
         );
         final fixture = File(
           '${cache.path}/updater-test-fixtures/valid-new.apk',

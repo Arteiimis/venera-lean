@@ -1,4 +1,4 @@
-package com.github.wgh136.venera
+package io.github.arteiimis.venera
 
 import android.database.Cursor
 import android.database.MatrixCursor

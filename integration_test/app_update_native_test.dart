@@ -27,7 +27,7 @@ void main() {
           reason: 'Requires an Android device',
         );
         final cache = await getTemporaryDirectory();
-        const package = 'com.github.wgh136.venera.prime.integrationtest';
+        const package = 'io.github.arteiimis.venera.integrationtest';
         expect(
           cache.path.split('/'),
           contains(package),

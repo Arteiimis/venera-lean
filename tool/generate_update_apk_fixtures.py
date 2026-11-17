@@ -3,7 +3,7 @@
 
 Usage: python3 tool/generate_update_apk_fixtures.py [--multisign-runner] ISOLATED_RUNNER.apk
 
-The runner must use com.github.wgh136.venera.prime.integrationtest. Defaults to
+The runner must use io.github.arteiimis.venera.integrationtest. Defaults to
 the standard Android debug key. For a differently signed runner, set
 FIXTURE_KEYSTORE, FIXTURE_KEY_ALIAS, FIXTURE_STORE_PASSWORD and
 FIXTURE_KEY_PASSWORD. Passwords are passed to apksigner through the environment.
@@ -31,7 +31,7 @@ import subprocess
 import tempfile
 
 
-PACKAGE = "com.github.wgh136.venera.prime.integrationtest"
+PACKAGE = "io.github.arteiimis.venera.integrationtest"
 ROOT = Path(__file__).resolve().parents[1]
 
 

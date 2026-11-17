@@ -5,7 +5,7 @@
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application>
-        <provider android:name="com.github.wgh136.venera.TestDocumentsProvider"
+        <provider android:name="io.github.arteiimis.venera.TestDocumentsProvider"
             android:authorities="${applicationId}.testdocs"
             android:enabled="${primeTestDocumentsEnabled}"
             android:exported="true" android:grantUriPermissions="true"

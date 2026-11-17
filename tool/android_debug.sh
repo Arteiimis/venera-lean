@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # labels or coordinate taps; artifacts are always written to OUT_DIR.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ADB="${ADB:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}/platform-tools/adb}"
-PACKAGE="${PACKAGE:-com.github.wgh136.venera.prime}"
+PACKAGE="${PACKAGE:-io.github.arteiimis.venera}"
 APK="${APK:-$ROOT_DIR/build/app/outputs/flutter-apk/app-debug.apk}"
 SOURCE="${SOURCE:-$ROOT_DIR/tool/comic_sources/manga_dex.js}"
 OUT_DIR="${OUT_DIR:-$ROOT_DIR/build/android-debug-$(date +%Y%m%d-%H%M%S)}"

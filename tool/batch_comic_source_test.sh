@@ -5,10 +5,10 @@ set -u
 # Usage: tool/batch_comic_source_test.sh [source-dir] [apk]
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SOURCE_DIR="${1:-${VENERA_SOURCE_DIR:-$HOME/.local/share/com.github.wgh136.venera.prime/comic_source}}"
+SOURCE_DIR="${1:-${VENERA_SOURCE_DIR:-$HOME/.local/share/io.github.arteiimis.venera/comic_source}}"
 APK="${2:-${VENERA_APK:-$ROOT_DIR/build/app/outputs/flutter-apk/app-debug.apk}}"
 ADB="${ADB:-$HOME/Android/Sdk/platform-tools/adb}"
-PACKAGE="${PACKAGE:-com.github.wgh136.venera.prime}"
+PACKAGE="${PACKAGE:-io.github.arteiimis.venera}"
 REPORT="${REPORT:-$ROOT_DIR/build/batch-source-report.tsv}"
 
 mkdir -p "$(dirname "$REPORT")"

@@ -11,7 +11,8 @@ void main() {
     expect(gradle, contains('flutterTarget.contains("/integration_test/")'));
     expect(gradle, contains('project.findProperty("primeIntegrationTest")'));
     expect(gradle, contains('applicationId = integrationTestBuild ?'));
-    expect(gradle, contains('com.github.wgh136.venera.prime.integrationtest'));
+    expect(gradle, contains('namespace = "io.github.arteiimis.venera"'));
+    expect(gradle, contains('io.github.arteiimis.venera.integrationtest'));
   });
 
   test('release APK names belong to this app', () {

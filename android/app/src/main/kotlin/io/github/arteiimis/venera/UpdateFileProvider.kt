@@ -1,4 +1,4 @@
-package com.github.wgh136.venera
+package io.github.arteiimis.venera
 
 import androidx.core.content.FileProvider
 

@@ -34,8 +34,8 @@ if (-not (Test-Path (Join-Path $releaseDir 'venera-lean.exe'))) {
   throw 'Run "flutter build windows --release" before building the installer.'
 }
 
-$version = (Select-String -Path (Join-Path $repo 'pubspec.yaml') -Pattern '^version:\s*(\S+)' -AllMatches).
-  Matches[0].Groups[1].Value.Split('+')[0]
+$versionLine = Select-String -Path (Join-Path $repo 'pubspec.yaml') -Pattern '^version:\s*(\S+)' -AllMatches
+$version = $versionLine.Matches[0].Groups[1].Value.Split('+')[0]
 
 $isl = Join-Path $repo 'windows/ChineseSimplified.isl'
 if (-not (Test-Path $isl)) {

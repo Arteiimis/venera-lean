@@ -225,6 +225,15 @@ class _AppSettingsState extends State<AppSettings> {
               } else {
                 skippedSources = await importAppData(cacheFile);
               }
+            } on UpstreamBackupException catch (error) {
+              controller.fail(error);
+              if (context.mounted) {
+                context.showMessage(
+                  message:
+                      'This backup was created by another app. Use "Migrate from Venera Prime".'
+                          .tl,
+                );
+              }
             } catch (error, stack) {
               controller.fail(error);
               Log.error('Import data', error, stack);
@@ -258,6 +267,44 @@ class _AppSettingsState extends State<AppSettings> {
             }
           },
           actionTitle: 'Import'.tl,
+        ).toSliver(),
+        _CallbackSetting(
+          title: "Migrate from Venera Prime".tl,
+          subtitle:
+              "One-time import of a Venera Prime backup (settings, accounts, history, favorites). Reading statistics and follow updates stay removed."
+                  .tl,
+          callback: () async {
+            final file = await selectFile(ext: ['venera']);
+            if (file == null || !context.mounted) return;
+            // Migration replaces live databases, so keep its view modal.
+            final controller = showLoadingDialog(
+              context,
+              allowCancel: false,
+              barrierDismissible: false,
+              message: 'Migrate from Venera Prime'.tl,
+            );
+            final cacheFile = File(
+              FilePath.join(App.cachePath, 'migrate_upstream_temp'),
+            );
+            try {
+              await file.saveTo(cacheFile.path);
+              await importAppData(cacheFile, allowUpstream: true);
+              if (context.mounted) {
+                context.showMessage(message: 'Backup restored'.tl);
+              }
+            } catch (error, stack) {
+              controller.fail(error);
+              Log.error('Migrate data', error, stack);
+              if (context.mounted) {
+                context.showMessage(message: 'Failed to import data'.tl);
+              }
+            } finally {
+              await cacheFile.deleteIgnoreError();
+              controller.close();
+              App.forceRebuild();
+            }
+          },
+          actionTitle: 'Migrate'.tl,
         ).toSliver(),
         _CallbackSetting(
           title: "Data Sync".tl,

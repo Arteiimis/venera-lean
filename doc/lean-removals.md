@@ -42,12 +42,11 @@
 - 上游触碰：`follow_updates_page.dart` 14、`follow_updates.dart` 9、`favorites.dart` 40、`home_page.dart` 62。四项里冲突面最大。
 - 状态：已完成。
 
-## 批次 2（备份与上游分离，待做）
+## 批次 2 备份与上游分离
 
-目标：备份/同步只服务本仓库；对上游的兼容只保留一个一次性迁移入口。
-
-- 导出：manifest 标记本产品（如 `{"format": 2, "product": "venera-lean", "files": [...]}`）。
-- 导入：仅接受本仓库 format 2；format 1（上游/旧版）一律走「从 Venera Prime 迁移」入口，普通导入拒绝并提示。
-- 迁移入口：设置里唯一一项，导入一次上游 `.venera`（数据库 + appdata 设置），忽略已删除功能的数据。
-- WebDAV：文件名加本仓库前缀（如 `lean-<days>-<dataVersion>.venera`），远端列举/保留策略只认自己的前缀，避免与 Prime 混在同一目录。
-- 状态：待做。
+- 导出：`manifest.json` 写 `{"format": 2, "product": "venera-lean", "files": [...]}`（常量 `backupManifestFormat` / `backupManifestProduct`，`lib/utils/data.dart`）。
+- 导入：`importAppData` 默认只接受本仓库 format 2。无 manifest 或 `format: 1` 的上游备份抛 `UpstreamBackupException`，UI 提示改用迁移入口；未知 format（如 99）即便走迁移入口也拒绝。
+- 迁移入口：设置 → 应用里唯一一项「从 Venera Prime 迁移」，以 `allowUpstream: true` 导入一次上游备份；导入后 `_dropRemovedFeatureState()` 清掉已删功能的设置键（`followUpdates*`、`recordReadingStatistics`、`readerPageMargin*`）并把 `homeLayout` 归一化到现存模块。
+- WebDAV：文件名改为 `lean-<day>-<version>-<micros>-<uuid>.venera`；远端列举、版本推进、保留策略与"最新备份"选择全部只认 `isOwnBackupName()`，与 Prime 备份共用同一目录时互不干扰。
+- 测试：`test/data_backup_test.dart` 的构造备份改为携带本仓库 manifest，无 manifest 的用例改走 `allowUpstream: true`，并新增"上游备份走普通导入被拒"断言；`test/data_sync_backup_policy_test.dart` 全部改用 `lean-` 前缀；`test/home_layout_test.dart` 把已删除的 `statistics` 模块 id 换成 `history`。
+- 状态：已完成。

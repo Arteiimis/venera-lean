@@ -40,10 +40,10 @@ void main() {
     'invalid and duplicate ids are ignored; missing modules are appended',
     () {
       final layout = HomeLayout.fromJson({
-        'order': ['statistics', 'statistics', 4, 'unknown'],
+        'order': ['history', 'history', 4, 'unknown'],
         'hidden': ['history', 'unknown', false],
       });
-      expect(layout.order.first, 'statistics');
+      expect(layout.order.first, 'history');
       expect(layout.order.length, HomeLayout.titles.length);
       expect(layout.hidden, {'history'});
       expect(HomeLayout.fromJson(layout.toJson()).toJson(), layout.toJson());

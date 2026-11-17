@@ -185,7 +185,8 @@ void main() {
         },
       );
       manager.clear();
-      await importAppData(completeBackup);
+      // Hand-built backups carry no manifest: upstream format, migration only.
+      await importAppData(completeBackup, allowUpstream: true);
       expect(manager.getAll().single.id, 'backup-id');
       expect(cookies.loadForRequest(uri).single.value, 'fixture-session');
       expect(appdata.settings['token'], 'fixture-token');
@@ -207,7 +208,7 @@ void main() {
         },
       );
       await expectLater(
-        importAppData(corruptCookiesBackup),
+        importAppData(corruptCookiesBackup, allowUpstream: true),
         throwsA(isA<SqliteException>()),
       );
       expect(cookies.loadForRequest(uri).single.value, 'fixture-session');
@@ -288,7 +289,11 @@ class BackupPreserved extends ComicSource {
           final files = Map<String, List<int>>.from(backupFiles);
           if (withManifest) {
             files['manifest.json'] = utf8.encode(
-              jsonEncode({'format': 1, 'files': backupFiles.keys.toList()}),
+              jsonEncode({
+                'format': backupManifestFormat,
+                'product': backupManifestProduct,
+                'files': backupFiles.keys.toList(),
+              }),
             );
           }
           final backup = await _archive(
@@ -297,7 +302,12 @@ class BackupPreserved extends ComicSource {
           );
           final preserved = File('${sourceDir.path}/preserved.js')
             ..writeAsStringSync(preservedScript);
-          final skipped = await importAppData(backup);
+          // A backup without a manifest is upstream format: only the
+          // migration entry accepts it.
+          final skipped = await importAppData(
+            backup,
+            allowUpstream: !withManifest,
+          );
           expect(
             skipped,
             unorderedEquals([
@@ -329,7 +339,8 @@ class BackupPreserved extends ComicSource {
             ...backupFiles,
             'manifest.json': utf8.encode(
               jsonEncode({
-                'format': 1,
+                'format': backupManifestFormat,
+                'product': backupManifestProduct,
                 'files': [...backupFiles.keys, 'comic_source/missing.js'],
               }),
             ),
@@ -372,7 +383,11 @@ class BackupPreserved extends ComicSource {
           jsonEncode({'settings': {}, 'searchHistory': []}),
         ),
       });
-      await importAppData(legacyBackup);
+      await expectLater(
+        importAppData(legacyBackup),
+        throwsA(isA<UpstreamBackupException>()),
+      );
+      await importAppData(legacyBackup, allowUpstream: true);
       expect(manager.getAll().single.id, 'backup-id');
       expect(cookies.loadForRequest(uri).single.value, 'fixture-session');
 
@@ -402,7 +417,7 @@ class BackupPreserved extends ComicSource {
           ).readAsBytesSync(),
         },
       );
-      await importAppData(legacySchemaBackup);
+      await importAppData(legacySchemaBackup, allowUpstream: true);
       expect(manager.getAll().single.id, 'old-backup');
       App.closeComponents();
       await App.initComponents();
@@ -426,8 +441,9 @@ class BackupPreserved extends ComicSource {
           ),
         },
       );
+      // Unknown formats stay rejected even on the migration entry.
       await expectLater(
-        importAppData(invalidManifestBackup),
+        importAppData(invalidManifestBackup, allowUpstream: true),
         throwsA(isA<FormatException>()),
       );
 

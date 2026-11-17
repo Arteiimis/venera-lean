@@ -592,6 +592,10 @@ class Settings with ChangeNotifier {
     }
   }
 
+  void remove(String key) {
+    if (_data.remove(key) != null) notifyListeners();
+  }
+
   void setEnabledComicSpecificSettings(
     String comicId,
     String sourceKey,

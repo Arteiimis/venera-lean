@@ -10,6 +10,7 @@ import 'package:venera/foundation/comic_source/comic_source.dart';
 import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/favorites.dart';
 import 'package:venera/foundation/history.dart';
+import 'package:venera/foundation/home_layout.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/foundation/read_later.dart';
 import 'package:venera/utils/archive_security.dart';
@@ -18,6 +19,32 @@ import 'package:venera/utils/ext.dart';
 import 'package:zip_flutter/zip_flutter.dart';
 
 import 'io.dart';
+
+/// Marker written into manifest.json so this app only accepts its own backups.
+const int backupManifestFormat = 2;
+const String backupManifestProduct = 'venera-lean';
+
+/// Thrown when a backup was not written by this app.
+///
+/// Upstream Venera Prime backups are only importable through the one-shot
+/// migration entry, which passes [allowUpstream].
+class UpstreamBackupException implements Exception {
+  const UpstreamBackupException();
+
+  @override
+  String toString() => 'This backup was not created by this app';
+}
+
+/// Settings owned by features this build no longer ships.
+const _removedFeatureSettings = [
+  'followUpdatesFolder',
+  'followUpdatesCheckOnStart',
+  'followUpdatesCheckIntervalHours',
+  'followUpdatesCheckFixedTime',
+  'recordReadingStatistics',
+  'readerPageMarginEnabled',
+  'readerPageMarginPercent',
+];
 
 String _safeImportedTable(String name) {
   if (name.isEmpty ||
@@ -135,7 +162,13 @@ Future<File> exportAppData([bool sync = true]) async {
         }
         zipFile.addFileFromBytes(
           'manifest.json',
-          utf8.encode(jsonEncode({'format': 1, 'files': manifestFiles})),
+          utf8.encode(
+            jsonEncode({
+              'format': backupManifestFormat,
+              'product': backupManifestProduct,
+              'files': manifestFiles,
+            }),
+          ),
         );
       } finally {
         zipFile.close();
@@ -149,7 +182,14 @@ Future<File> exportAppData([bool sync = true]) async {
 }
 
 /// Returns empty source scripts omitted from this restore.
-Future<List<String>> importAppData(File file, {bool sync = false}) async {
+///
+/// Set [allowUpstream] only from the one-shot migration entry: it accepts a
+/// Venera Prime backup and then drops settings of removed features.
+Future<List<String>> importAppData(
+  File file, {
+  bool sync = false,
+  bool allowUpstream = false,
+}) async {
   var cacheDirPath = FilePath.join(
     App.cachePath,
     'temp_data_${DateTime.now().microsecondsSinceEpoch}',
@@ -158,7 +198,10 @@ Future<List<String>> importAppData(File file, {bool sync = false}) async {
   await cacheDir.create(recursive: true);
   try {
     await ArchiveSecurity.extract(file, cacheDir);
-    _validateBackupManifest(cacheDir);
+    final isOwnBackup = _validateBackupManifest(
+      cacheDir,
+      allowUpstream: allowUpstream,
+    );
     final skippedSources = await _validateBackupSources(cacheDir);
     var historyFile = cacheDir.joinFile("history.db");
     var localFavoriteFile = cacheDir.joinFile("local_favorite.db");
@@ -196,21 +239,37 @@ Future<List<String>> importAppData(File file, {bool sync = false}) async {
     for (final name in skippedSources) {
       Log.warning('Import Data', 'Skipped empty source script: $name');
     }
+    if (!isOwnBackup) {
+      _dropRemovedFeatureState();
+      await appdata.saveData(false);
+    }
     return skippedSources;
   } finally {
     await cacheDir.deleteIgnoreError(recursive: true);
   }
 }
 
-void _validateBackupManifest(Directory staging) {
+/// Returns true when the backup carries this app's manifest marker.
+bool _validateBackupManifest(Directory staging, {required bool allowUpstream}) {
   final manifest = staging.joinFile('manifest.json');
   if (!manifest.existsSync()) {
-    // Backups created before the manifest was introduced remain importable.
-    return;
+    // Backups created before the manifest was introduced (upstream format).
+    if (!allowUpstream) throw const UpstreamBackupException();
+    return false;
   }
   final decoded = jsonDecode(manifest.readAsStringSync());
-  if (decoded is! Map || decoded['format'] != 1 || decoded['files'] is! List) {
+  if (decoded is! Map || decoded['files'] is! List) {
     throw const FormatException('Backup manifest has an invalid structure');
+  }
+  final isOwnBackup =
+      decoded['format'] == backupManifestFormat &&
+      decoded['product'] == backupManifestProduct;
+  if (!isOwnBackup) {
+    if (!allowUpstream) throw const UpstreamBackupException();
+    // Upstream Venera Prime writes format 1 without a product marker.
+    if (decoded['format'] != 1) {
+      throw const FormatException('Backup manifest has an invalid structure');
+    }
   }
   final listed = <String>{};
   for (final value in decoded['files'] as List) {
@@ -230,6 +289,18 @@ void _validateBackupManifest(Directory staging) {
   if (required.any((name) => !listed.contains(name))) {
     throw const FormatException('Backup manifest is missing required files');
   }
+  return isOwnBackup;
+}
+
+/// Drops settings of removed features so a migrated upstream backup does not
+/// leave dead keys behind, and normalizes the home layout to known modules.
+void _dropRemovedFeatureState() {
+  for (final key in _removedFeatureSettings) {
+    appdata.settings.remove(key);
+  }
+  appdata.settings['homeLayout'] = HomeLayout.fromJson(
+    appdata.settings['homeLayout'],
+  ).toJson();
 }
 
 Future<List<String>> _validateBackupSources(Directory staging) async {

@@ -21,10 +21,17 @@ import 'package:venera/utils/translations.dart';
 
 import 'io.dart';
 
-final _backupNamePattern = RegExp(r'^(\d+)-(\d+)(?:-(.+))?\.venera$');
+/// Prefix that keeps this app's backups apart from upstream ones in a
+/// shared WebDAV directory.
+const backupFilePrefix = 'lean';
+
+final _backupNamePattern = RegExp(r'^lean-(\d+)-(\d+)(?:-(.+))?\.venera$');
 final _uniqueBackupNamePattern = RegExp(
-  r'^\d+-\d+-\d{20}-[0-9a-f]{32}\.venera$',
+  r'^lean-\d+-\d+-\d{20}-[0-9a-f]{32}\.venera$',
 );
+
+/// Whether [name] is a backup written by this app.
+bool isOwnBackupName(String name) => _backupNamePattern.hasMatch(name);
 
 @visibleForTesting
 int compareBackupNames(String a, String b) {
@@ -296,9 +303,7 @@ class DataSync with ChangeNotifier {
       try {
         var files = await client.readDir('/');
         files = files
-            .where(
-              (e) => e.isDir != true && e.name?.endsWith('.venera') == true,
-            )
+            .where((e) => e.isDir != true && isOwnBackupName(e.name ?? ''))
             .toList();
         uploadingVersion = nextBackupVersion(
           previousVersion,
@@ -311,7 +316,7 @@ class DataSync with ChangeNotifier {
         task.update(completed: 1, message: 'Uploading backup');
         var time = (DateTime.now().millisecondsSinceEpoch ~/ 86400000)
             .toString();
-        var filename = time;
+        var filename = '$backupFilePrefix-$time';
         filename += '-';
         filename += appdata.settings['dataVersion'].toString();
         filename +=
@@ -326,7 +331,7 @@ class DataSync with ChangeNotifier {
         try {
           final namesToPrune = backupFilesToPrune(
             existingNames: files.map((file) => file.name!).toList(),
-            dayPrefix: '$time-',
+            dayPrefix: '$backupFilePrefix-$time-',
             uploadedFilename: filename,
           );
           for (final name in namesToPrune) {
@@ -408,9 +413,7 @@ class DataSync with ChangeNotifier {
       try {
         var files = await client.readDir('/');
         files = files
-            .where(
-              (e) => e.isDir != true && e.name?.endsWith('.venera') == true,
-            )
+            .where((e) => e.isDir != true && isOwnBackupName(e.name ?? ''))
             .toList();
         files.sort((a, b) => compareBackupNames(b.name!, a.name!));
         var file = files.firstOrNull;

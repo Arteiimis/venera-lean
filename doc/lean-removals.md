@@ -50,3 +50,12 @@
 - WebDAV：文件名改为 `lean-<day>-<version>-<micros>-<uuid>.venera`；远端列举、版本推进、保留策略与"最新备份"选择全部只认 `isOwnBackupName()`，与 Prime 备份共用同一目录时互不干扰。
 - 测试：`test/data_backup_test.dart` 的构造备份改为携带本仓库 manifest，无 manifest 的用例改走 `allowUpstream: true`，并新增"上游备份走普通导入被拒"断言；`test/data_sync_backup_policy_test.dart` 全部改用 `lean-` 前缀；`test/home_layout_test.dart` 把已删除的 `statistics` 模块 id 换成 `history`。
 - 状态：已完成。
+
+## 批次 3 发布基建
+
+- 删除上游发布流水线与配套工具：`.github/workflows/main.yml`（六平台 + 机器人发布）、`.github/workflows/dispatch-release.yml`、`tool/check_release_identity.py`、`tool/test_release_identity.py`、`update_alt_store.py`、`alt_store.json`、`tool/test_alt_store.py`。合并上游时不要让它们回来：这些流程依赖上游的 bot 身份、macOS 证书与 AltStore 源。
+- 新增 `.github/workflows/release.yml`：`checks`（analyze + `flutter test --exclude-tags environment` + 版本一致性）→ `android`（用本仓库 keystore 签名，产出 4 个 APK）与 `windows`（便携 ZIP）；只有 `v*` 标签触发 `publish`（`SHA256SUMS` + `gh release create`），手动触发只构建不发布。
+- APK 文件名由 `venera-prime-*` 改为 `venera-lean-*`（`android/app/build.gradle`）；应用内更新按 `-<abi>.apk` 后缀选包，命名规则不可随意改。
+- 4 个依赖原生库/时序的测试标记 `@Tags(['environment'])`，CI 排除、需在带原生库的环境手工跑 `flutter test --tags environment`。
+- `doc/release-policy.md` 与 `test/release_workflow_test.dart` 按本流程重写。
+- 状态：已完成。

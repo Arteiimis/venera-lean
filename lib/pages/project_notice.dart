@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/utils/atomic_file.dart';
 import 'package:venera/utils/io.dart';
 import 'package:venera/utils/translations.dart';
 
-const primeTelegramUrl = 'https://t.me/+Musk77e3ahFhMjg1';
 const upstreamTelegramUrl = 'https://t.me/+-Z0d_TB_Alk0YzU1';
 
 /// Separate from appdata and backups: acknowledgement belongs to this install.
@@ -69,23 +67,6 @@ class _ProjectNoticeDialogState extends State<ProjectNoticeDialog> {
     }
   }
 
-  Future<void> _joinGroup() async {
-    try {
-      if (!await launchUrlString(
-        primeTelegramUrl,
-        mode: LaunchMode.externalApplication,
-      )) {
-        throw StateError('Could not open Telegram');
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => _error = 'Could not open Telegram. Please try again.'.tl,
-        );
-      }
-    }
-  }
-
   Widget _section(String title, String body) => Padding(
     padding: const EdgeInsets.only(bottom: 18),
     child: Column(
@@ -123,10 +104,6 @@ class _ProjectNoticeDialogState extends State<ProjectNoticeDialog> {
               'This project is independently maintained by a third party. It is not affiliated with, and does not represent, the upstream team. Its maintenance approach and release schedule differ from upstream, and the same level of quality and stability cannot be guaranteed.',
             ),
             _section(
-              'Community and feedback',
-              'The upstream community is already large. As this fork is maintained independently and cannot guarantee the same quality and stability as upstream, we have created a separate group for its users and feedback to avoid adding to the upstream community’s support burden.\n\nYou are welcome to join the Venera Prime Telegram group. For the upstream group, go to Settings → About.',
-            ),
-            _section(
               'How this project is maintained',
               'The current maintainer has experience in traditional software development. As AI capabilities improve and personal time and energy remain limited, much of this project’s repair and maintenance work is assisted by or carried out by large language models (LLMs); not all code is written by hand. Testing may still miss problems, so reproducible bug reports are welcome. Please back up your favorites, reading history, and important settings before upgrading.',
             ),
@@ -147,10 +124,6 @@ class _ProjectNoticeDialogState extends State<ProjectNoticeDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: _saving ? null : _joinGroup,
-          child: Text('Join Telegram group'.tl),
-        ),
         FilledButton(
           key: const Key('project-notice-confirm'),
           onPressed: _saving ? null : _confirm,

@@ -61,9 +61,9 @@ void main() {
         );
         await tester.tap(find.text('Open'));
         await tester.pumpAndSettle();
-        expect(find.text('Community and feedback'.tl), findsOneWidget);
+        expect(find.text('Unofficial fork'.tl), findsOneWidget);
         expect(
-          tester.getTopLeft(find.text('Community and feedback'.tl)).dy,
+          tester.getTopLeft(find.text('Unofficial fork'.tl)).dy,
           lessThan(
             tester
                 .getTopLeft(find.text('How this project is maintained'.tl))

@@ -36,8 +36,7 @@ class _AboutSettingsState extends State<AboutSettings> {
             const SizedBox(height: 8),
             Text("V${App.version}", style: const TextStyle(fontSize: 16)),
             Text(
-              "Venera Lean is a free and open-source comic reader."
-                  .tl,
+              "Venera Lean is a free and open-source comic reader.".tl,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -84,13 +83,6 @@ class _AboutSettingsState extends State<AboutSettings> {
           trailing: const Icon(Icons.open_in_new),
           onTap: () {
             launchUrlString(appUpdateRepoUrl);
-          },
-        ).toSliver(),
-        ListTile(
-          title: Text("Venera Prime Telegram group".tl),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () {
-            launchUrlString(primeTelegramUrl);
           },
         ).toSliver(),
         ListTile(

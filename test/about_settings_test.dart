@@ -8,14 +8,7 @@ import 'package:venera/utils/translations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const description =
-      'Venera Lean is a free and open-source comic reader.';
-  const telegramLabels = {
-    'zh-CN': 'Venera Prime Telegram 群',
-    'zh-TW': 'Venera Prime Telegram 群',
-    'en-US': 'Venera Prime Telegram group',
-  };
-
+  const description = 'Venera Lean is a free and open-source comic reader.';
   setUpAll(AppTranslation.init);
 
   for (final locale in ['zh-CN', 'zh-TW', 'en-US']) {
@@ -68,13 +61,6 @@ void main() {
           await tester.pump();
           expect(opened, 1);
           expect(tester.takeException(), isNull);
-          await tester.scrollUntilVisible(
-            find.text(telegramLabels[locale]!),
-            100,
-            scrollable: find.byType(Scrollable).first,
-          );
-          expect(find.text(telegramLabels[locale]!), findsOneWidget);
-          expect(find.text('Telegram'), findsNothing);
           await tester.scrollUntilVisible(
             find.text('Upstream project Telegram group'.tl),
             100,

@@ -17,6 +17,10 @@ Compared with upstream, this fork removes reading statistics, follow updates, th
 - View comments, tags, and other information of comics if the source supports
 - Login to comment, rate, and other operations if the source supports
 
+## Downloads
+
+Windows (portable zip) and Android (signed APKs) builds are published on the [releases page](https://github.com/Arteiimis/venera-lean/releases). The Windows zip is not code signed, so SmartScreen may warn about an unknown publisher on first launch.
+
 ## Contributing
 
 Open an [issue](https://github.com/Arteiimis/venera-lean/issues) with a link to your fork, branch, or commits to propose a change.
@@ -39,4 +43,8 @@ The Chinese translation of the manga tags is from this project.
 
 ## Headless Mode
 See [Headless Doc](doc/headless_doc.md)
+
+## License
+
+GPL-3.0, inherited from [Venera Prime](https://github.com/venera-app/venera-prime) and [Venera](https://github.com/venera-app/venera). See [LICENSE](LICENSE).
 

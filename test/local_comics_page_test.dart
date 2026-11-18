@@ -53,6 +53,13 @@ void main() {
       );
       await fixture.settle(tester);
       expect(find.textContaining('Local · '), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ComicTile),
+          matching: find.textContaining('Local · '),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byType(MenuButton).first);

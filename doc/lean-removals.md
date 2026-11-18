@@ -116,3 +116,13 @@
 - 测试：`test/app_database_test.dart`（WAL/同步级别/busy_timeout、校验标记、损坏文件）；`test/data_backup_test.dart` 的 legacy 夹具改为先 checkpoint 再读原始数据库文件。
 - 已知副作用：WAL 期间 sqlite 持有的文件句柄不共享删除，Windows 上「测试结束删临时目录」这类操作若还有连接存活会报 errno 32（仅影响少数本地测试，Linux CI 不受影响）；数据库目录里会多出 `-wal`/`-shm`/`.verified` 文件。
 - 状态：已完成。
+
+## 批次 7 来源与占用移入本地卡片
+
+背景：上游把本地漫画的来源与磁盘占用作为独立一窄行挂在卡片下方（`SliverGridComics.itemWrapper` 包一层 `Column`），既占网格高度又把封面压小。
+
+- `lib/components/comic.dart`：`ComicTile` 新增可选 `footer`，钉在卡片右下角——详细模式跟在描述行末尾（描述右侧、语言角标之后，最宽 128，超出省略）；简报模式作为半透明角标叠在封面右下角，与已有的说明角标同一列（抽 `_coverLabel()` 复用角标样式）。`SliverGridComics`/`_SliverGridComics` 的 `itemWrapper` 换成 `footerBuilder`（上游 2.7.0 只为这个占用行加的包装钩子，现已无其它使用者）。
+- `lib/pages/local_comics_page.dart`：`FutureBuilder<int>` 直接作为 `footerBuilder` 的返回值，不再包 `Column`/`Expanded`，卡片恢复满高；`_size()` 与 `_sizes` 缓存不变。
+- 测试：`test/local_comics_page_test.dart` 断言来源/占用文本位于 `ComicTile` 内。
+- 上游碰撞点：`comic.dart` 77 次提交（公共组件，只新增可选参数）、`local_comics_page.dart` 32 次。合并时保留本实现，不要让 `itemWrapper` 回来。
+- 状态：已完成。

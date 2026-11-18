@@ -555,33 +555,22 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
             ),
           ),
           SliverGridComics(
-            itemWrapper: (c, child) {
+            footerBuilder: (c) {
               final comic = c as LocalComic;
               final source =
                   comic.comicType.comicSource?.name ??
                   (comic.comicType == ComicType.local
                       ? 'Local'.tl
                       : comic.sourceKey);
-              return Column(
-                children: [
-                  Expanded(child: child),
-                  FutureBuilder<int>(
-                    future: _sizes.putIfAbsent(
-                      comic.baseDir,
-                      () => _size(comic),
-                    ),
-                    builder: (context, snapshot) => Text(
-                      '$source · ${snapshot.hasData
-                          ? bytesToReadableString(snapshot.data!)
-                          : snapshot.hasError
-                          ? "Unavailable".tl
-                          : "…"}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-                ],
+              return FutureBuilder<int>(
+                future: _sizes.putIfAbsent(comic.baseDir, () => _size(comic)),
+                builder: (context, snapshot) => Text(
+                  '$source · ${snapshot.hasData
+                      ? bytesToReadableString(snapshot.data!)
+                      : snapshot.hasError
+                      ? "Unavailable".tl
+                      : "…"}',
+                ),
               );
             },
             comics: comics,

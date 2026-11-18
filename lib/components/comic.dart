@@ -33,6 +33,7 @@ class ComicTile extends StatelessWidget {
     required this.comic,
     this.enableLongPressed = true,
     this.badge,
+    this.footer,
     this.menuOptions,
     this.onTap,
     this.onLongPressed,
@@ -44,6 +45,10 @@ class ComicTile extends StatelessWidget {
   final bool enableLongPressed;
 
   final String? badge;
+
+  /// Compact label pinned to the tile's bottom-right corner: after the
+  /// description in detailed mode, over the cover in brief mode.
+  final Widget? footer;
 
   final List<MenuEntry>? menuOptions;
 
@@ -276,6 +281,7 @@ class ComicTile extends StatelessWidget {
                     subtitle: comic.subtitle ?? '',
                     description: comic.description,
                     badge: badge ?? comic.language,
+                    footer: footer,
                     tags: comic.tags,
                     maxLines: 2,
                     enableTranslate:
@@ -343,45 +349,34 @@ class ComicTile extends StatelessWidget {
                             ? 10.0
                             : 12.0;
 
-                        if (text == null) {
-                          return const SizedBox();
-                        }
-
                         var children = <Widget>[];
-                        var lines = text.split('\n');
-                        lines.removeWhere((e) => e.trim().isEmpty);
-                        if (lines.length > 3) {
-                          lines = lines.sublist(0, 3);
+                        if (text != null) {
+                          var lines = text.split('\n');
+                          lines.removeWhere((e) => e.trim().isEmpty);
+                          if (lines.length > 3) {
+                            lines = lines.sublist(0, 3);
+                          }
+                          for (var line in lines) {
+                            children.add(
+                              _coverLabel(
+                                Text(line.displayText),
+                                fortSize,
+                                constraints.maxWidth,
+                              ),
+                            );
+                          }
                         }
-                        for (var line in lines) {
+                        if (footer != null) {
                           children.add(
-                            Container(
-                              margin: const EdgeInsets.fromLTRB(2, 0, 2, 2),
-                              padding: constraints.maxWidth < 80
-                                  ? const EdgeInsets.fromLTRB(3, 1, 3, 1)
-                                  : constraints.maxWidth < 150
-                                  ? const EdgeInsets.fromLTRB(4, 2, 4, 2)
-                                  : const EdgeInsets.fromLTRB(5, 2, 5, 2),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.black.toOpacity(0.5),
-                              ),
-                              constraints: BoxConstraints(
-                                maxWidth: constraints.maxWidth,
-                              ),
-                              child: Text(
-                                line.displayText,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: fortSize,
-                                  color: Colors.white,
-                                ),
-                                textAlign: TextAlign.right,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                            _coverLabel(
+                              footer!,
+                              fortSize,
+                              constraints.maxWidth,
                             ),
                           );
+                        }
+                        if (children.isEmpty) {
+                          return const SizedBox();
                         }
                         return Column(
                           mainAxisSize: MainAxisSize.min,
@@ -406,6 +401,33 @@ class ComicTile extends StatelessWidget {
           ).paddingHorizontal(6).paddingVertical(8),
         );
       },
+    );
+  }
+
+  Widget _coverLabel(Widget child, double fontSize, double maxWidth) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(2, 0, 2, 2),
+      padding: maxWidth < 80
+          ? const EdgeInsets.fromLTRB(3, 1, 3, 1)
+          : maxWidth < 150
+          ? const EdgeInsets.fromLTRB(4, 2, 4, 2)
+          : const EdgeInsets.fromLTRB(5, 2, 5, 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.black.toOpacity(0.5),
+      ),
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: DefaultTextStyle.merge(
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: fontSize,
+          color: Colors.white,
+        ),
+        textAlign: TextAlign.right,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        child: child,
+      ),
     );
   }
 
@@ -532,6 +554,7 @@ class _ComicDescription extends StatelessWidget {
     required this.description,
     required this.enableTranslate,
     this.badge,
+    this.footer,
     this.maxLines = 2,
     this.tags,
     this.rating,
@@ -541,6 +564,7 @@ class _ComicDescription extends StatelessWidget {
   final String subtitle;
   final String description;
   final String? badge;
+  final Widget? footer;
   final List<String>? tags;
   final int maxLines;
   final bool enableTranslate;
@@ -667,6 +691,23 @@ class _ComicDescription extends StatelessWidget {
                   ),
                 ),
               ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 128),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.colorScheme.onSurface.toOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    child: footer!,
+                  ),
+                ),
+              ),
           ],
         ),
       ],
@@ -762,13 +803,13 @@ class SliverGridComics extends StatefulWidget {
     this.onTap,
     this.onLongPressed,
     this.selections,
-    this.itemWrapper,
+    this.footerBuilder,
   });
 
   final List<Comic> comics;
 
-  /// Decorates a tile while retaining the shared grid layout and interactions.
-  final Widget Function(Comic comic, Widget child)? itemWrapper;
+  /// Builds the compact label shown in each tile's bottom-right corner.
+  final Widget Function(Comic comic)? footerBuilder;
 
   final Map<Comic, bool>? selections;
 
@@ -852,7 +893,7 @@ class _SliverGridComicsState extends State<SliverGridComics> {
       comics: comics,
       heroIDs: heroIDs,
       selection: widget.selections,
-      itemWrapper: widget.itemWrapper,
+      footerBuilder: widget.footerBuilder,
       onLastItemBuild: widget.onLastItemBuild,
       badgeBuilder: widget.badgeBuilder,
       menuBuilder: widget.menuBuilder,
@@ -872,12 +913,12 @@ class _SliverGridComics extends StatelessWidget {
     this.onTap,
     this.onLongPressed,
     this.selection,
-    this.itemWrapper,
+    this.footerBuilder,
   });
 
   final List<Comic> comics;
 
-  final Widget Function(Comic comic, Widget child)? itemWrapper;
+  final Widget Function(Comic comic)? footerBuilder;
 
   final List<int> heroIDs;
 
@@ -907,6 +948,7 @@ class _SliverGridComics extends StatelessWidget {
         var comic = ComicTile(
           comic: comics[index],
           badge: badge,
+          footer: footerBuilder?.call(comics[index]),
           menuOptions: menuBuilder?.call(comics[index]),
           onTap: onTap != null
               ? () => onTap!(comics[index], heroIDs[index])
@@ -917,7 +959,7 @@ class _SliverGridComics extends StatelessWidget {
           heroID: heroIDs[index],
         );
         if (selection == null) {
-          return itemWrapper?.call(comics[index], comic) ?? comic;
+          return comic;
         }
         final selectedTile = AnimatedContainer(
           key: ValueKey(comics[index].id),
@@ -933,7 +975,7 @@ class _SliverGridComics extends StatelessWidget {
           margin: const EdgeInsets.all(4),
           child: comic,
         );
-        return itemWrapper?.call(comics[index], selectedTile) ?? selectedTile;
+        return selectedTile;
       }, childCount: comics.length),
       gridDelegate: SliverGridDelegateWithComics(),
     );

@@ -104,6 +104,15 @@
 - 上游碰撞点：`reader.dart`、`scaffold.dart` 都是上游高频文件（scaffold 67 次提交），合并时保留本改动。
 - 状态：已完成。
 
+### 开发版窗口与正式版并存
+
+- `windows/runner/main.cpp`：Debug 构建的窗口标题改为 `Venera Lean (Dev)`（`_DEBUG` 由 `windows/CMakeLists.txt` 的 `apply_standard_settings` 定义）；正式构建保持 `Venera Lean` 不得改动。
+- 原因：`win32_window.cpp` 的 `Win32Window::Create` 按「窗口类名（`FLUTTER_RUNNER_WIN32_WINDOW`）+ 标题」调用 `FindWindow`，命中就把已有窗口提到前台并让新进程 `EXIT_FAILURE`。标题相同意味着正式版开着时 `flutter run -d windows` 只激活正式版窗口后直接退出。
+- 效果：正式版与开发版可同时开窗；两个开发版之间仍各自单实例（第二个仍以退出码 1 退出）。应用内标题栏本就有 `kDebugMode` 下的 Debug 按钮作为第二个区分标志。
+- 数据目录没有隔离：两者仍共用 `%APPDATA%\Arteiimis\Venera Lean`（`Runner.rc` 的 CompanyName/ProductName 未改）。同时运行只适合看界面；开发版若改了数据库结构或数据迁移，正式版不一定能读回。
+- 上游碰撞点：`main.cpp` 上游极少改动，合并时保留本实现。
+- 状态：已完成。
+
 ## 批次 6 磁盘繁忙时的卡顿与闪退
 
 背景：系统磁盘被其它程序占满时，界面会明显卡顿，Windows 上偶尔直接退出（无报错、退出码 0）。原因是 UI isolate 上的同步 sqlite 调用，加上默认的回滚日志(synchronous=FULL)在每次提交都会 fsync 日志与数据库文件——磁盘一慢，每一次历史/收藏/缓存写入都会阻塞帧；Windows runner 的看门狗在 UI 线程心跳停 5 秒时 `std::exit(0)`，于是表现为「闪退」。

@@ -12,7 +12,10 @@ abstract class OpenCC {
     var txt = utf8.decode(data.buffer.asUint8List());
     _s2t = <int, int>{};
     _t2s = <int, int>{};
-    for (var line in txt.split('\n')) {
+    for (var rawLine in txt.split('\n')) {
+      // The asset is checked out with CRLF on Windows, so strip the trailing
+      // carriage return before measuring the line.
+      var line = rawLine.trimRight();
       if (line.isEmpty || line.startsWith('#') || line.length != 2) continue;
       var s = line.runes.elementAt(0);
       var t = line.runes.elementAt(1);

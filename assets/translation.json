@@ -1,5 +1,7 @@
 {
   "zh_CN": {
+    "No results": "无结果",
+    "Enter a keyword to search this folder": "输入关键词以搜索此收藏夹",
     "Switch to detailed search history": "切换到新版记录（恢复来源、筛选和页码）",
     "Switch to keyword search history": "切换到旧版记录（仅关键词）",
     "Add favorite folder": "添加收藏夹模块",
@@ -759,6 +761,8 @@
     "Read a comic or swipe left to mark its latest chapters as read. Following stays enabled.": "阅读漫画或左滑可标记已看完最新章节，仍保留追更。"
   },
   "zh_TW": {
+    "No results": "無結果",
+    "Enter a keyword to search this folder": "輸入關鍵字以搜尋此收藏夾",
     "Switch to detailed search history": "切換到新版紀錄（恢復來源、篩選和頁碼）",
     "Switch to keyword search history": "切換到舊版紀錄（僅關鍵字）",
     "Restoration cancelled": "已取消恢復",

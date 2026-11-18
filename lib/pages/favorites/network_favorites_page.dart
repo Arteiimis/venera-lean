@@ -1,5 +1,17 @@
 part of 'favorites_page.dart';
 
+/// Opens the server-side search page for a source that implements it.
+void _openNetworkFavoritesSearch(
+  BuildContext context,
+  FavoriteData data,
+  String? folder,
+  String title,
+) {
+  context.to(
+    () => NetworkFavoritesSearchPage(data: data, folder: folder, title: title),
+  );
+}
+
 Future<bool> _deleteComic(
   String cid,
   String? fid,
@@ -117,6 +129,19 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
               },
             ),
           ),
+          if (widget.data.search != null || widget.data.searchNext != null)
+            Tooltip(
+              message: "Search".tl,
+              child: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => _openNetworkFavoritesSearch(
+                  context,
+                  widget.data,
+                  null,
+                  widget.data.title,
+                ),
+              ),
+            ),
           MenuButton(entries: [
             MenuEntry(
               icon: Icons.sync,
@@ -135,6 +160,21 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
           onTap: favoritesPage.folderTitleTapAction(context),
           child: Text(widget.data.title),
         ),
+        actions: [
+          if (widget.data.search != null || widget.data.searchNext != null)
+            Tooltip(
+              message: "Search".tl,
+              child: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () => _openNetworkFavoritesSearch(
+                  context,
+                  widget.data,
+                  null,
+                  widget.data.title,
+                ),
+              ),
+            ),
+        ],
       ),
       loadPage: widget.data.loadComic == null
           ? null
@@ -524,6 +564,15 @@ class _FavoriteFolder extends StatelessWidget {
       leadingSliver: SliverAppbar(
         title: Text(title),
         actions: [
+          if (data.search != null || data.searchNext != null)
+            Tooltip(
+              message: "Search".tl,
+              child: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () =>
+                    _openNetworkFavoritesSearch(context, data, folderID, title),
+              ),
+            ),
           MenuButton(entries: [
             MenuEntry(
               icon: Icons.sync,
@@ -537,6 +586,17 @@ class _FavoriteFolder extends StatelessWidget {
       ),
       errorLeading: Appbar(
         title: Text(title),
+        actions: [
+          if (data.search != null || data.searchNext != null)
+            Tooltip(
+              message: "Search".tl,
+              child: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () =>
+                    _openNetworkFavoritesSearch(context, data, folderID, title),
+              ),
+            ),
+        ],
       ),
       loadPage:
           data.loadComic == null ? null : (i) => data.loadComic!(i, folderID),

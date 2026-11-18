@@ -20,6 +20,23 @@ class FavoriteData {
   final Future<Res<List<Comic>>> Function(String? next, [String? folder])?
       loadNext;
 
+  /// Server-side search inside favorites.
+  ///
+  /// A value of null disables the search action for this source. [keyword] is
+  /// the text the user typed, without any translation.
+  final Future<Res<List<Comic>>> Function(
+    String keyword,
+    int page, [
+    String? folder,
+  ])? search;
+
+  /// Server-side search with a next page token. Ignored when [search] is set.
+  final Future<Res<List<Comic>>> Function(
+    String keyword,
+    String? next, [
+    String? folder,
+  ])? searchNext;
+
   /// key-id, value-name
   ///
   /// if comicId is not null, Res.subData is the folders that the comic is in
@@ -45,6 +62,8 @@ class FavoriteData {
     required this.multiFolder,
     required this.loadComic,
     required this.loadNext,
+    this.search,
+    this.searchNext,
     this.loadFolders,
     this.deleteFolder,
     this.addFolder,

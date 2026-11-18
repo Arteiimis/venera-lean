@@ -442,13 +442,34 @@ If `load` function is implemented, `loadNext` function will be ignored.
         loadNext: async (next, folder) => {
 
         },
+        /**
+         * [Optional] search comics in favorites.
+         * Implement this or `searchNext`. `searchNext` is ignored when this is implemented.
+         * throw `Login expired` to indicate login expired, App will automatically re-login retry.
+         * @param keyword {string} - the text the user typed, without translation
+         * @param page {number}
+         * @param folder {string?} - folder id, null for non-multi-folder
+         * @returns {Promise<{comics: Comic[], maxPage: number}>}
+         */
+        search: async (keyword, page, folder) => {
+
+        },
+        /**
+         * [Optional] search comics in favorites with next page token.
+         * @param keyword {string}
+         * @param next {string | null} - next page token, null for first page
+         * @param folder {string?} - folder id, null for non-multi-folder
+         * @returns {Promise<{comics: Comic[], next: string?}>}
+         */
+        searchNext: async (keyword, next, folder) => {
+
+        },
     }
 ```
 
 This part is used to manage network favorites of the source.
 
-`load` and `loadNext` functions are used to load search results.
-If `load` function is implemented, `loadNext` function will be ignored.
+`loadComics` and `loadNext` are used to load the favorite list. If `loadComics` is implemented, `loadNext` is ignored. `search` and `searchNext` are optional: when neither is implemented, the folder shows no search action.
 
 #### Comic Details
 

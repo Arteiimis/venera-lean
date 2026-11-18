@@ -961,6 +961,60 @@ class ComicSourceParser {
       };
     }
 
+    Future<Res<List<Comic>>> Function(String, int, [String?])? search;
+
+    Future<Res<List<Comic>>> Function(String, String?, [String?])? searchNext;
+
+    if (_checkExists("favorites.search")) {
+      search = (String keyword, int page, [String? folder]) async {
+        Future<Res<List<Comic>>> func() async {
+          try {
+            var res = await JsEngine().runCode("""
+            ComicSource.sources.$_registryKey.favorites.search(
+              ${jsonEncode(keyword)}, ${jsonEncode(page)}, ${jsonEncode(folder)})
+          """);
+            return Res(
+              List.generate(
+                res["comics"].length,
+                (index) => Comic.fromJson(res["comics"][index], _key!),
+              ),
+              subData: res["maxPage"],
+            );
+          } catch (e, s) {
+            Log.error("Network", "$e\n$s");
+            return Res.error(e.toString());
+          }
+        }
+
+        return retryZone(func);
+      };
+    }
+
+    if (_checkExists("favorites.searchNext")) {
+      searchNext = (String keyword, String? next, [String? folder]) async {
+        Future<Res<List<Comic>>> func() async {
+          try {
+            var res = await JsEngine().runCode("""
+            ComicSource.sources.$_registryKey.favorites.searchNext(
+              ${jsonEncode(keyword)}, ${jsonEncode(next)}, ${jsonEncode(folder)})
+          """);
+            return Res(
+              List.generate(
+                res["comics"].length,
+                (index) => Comic.fromJson(res["comics"][index], _key!),
+              ),
+              subData: res["next"],
+            );
+          } catch (e, s) {
+            Log.error("Network", "$e\n$s");
+            return Res.error(e.toString());
+          }
+        }
+
+        return retryZone(func);
+      };
+    }
+
     Future<Res<Map<String, String>>> Function([String? comicId])? loadFolders;
 
     Future<Res<bool>> Function(String name)? addFolder;
@@ -1021,6 +1075,8 @@ class ComicSourceParser {
       multiFolder: multiFolder,
       loadComic: loadComic,
       loadNext: loadNext,
+      search: search,
+      searchNext: searchNext,
       loadFolders: loadFolders,
       addFolder: addFolder,
       deleteFolder: deleteFolder,

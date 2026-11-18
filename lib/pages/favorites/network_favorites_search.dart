@@ -37,6 +37,10 @@ class _NetworkFavoritesSearchPageState
 
   bool loadedAnyPage = false;
 
+  /// Incremented on every submit so late responses from an old keyword cannot
+  /// change the result count of the current one.
+  int request = 0;
+
   @override
   void dispose() {
     textController.dispose();
@@ -53,13 +57,17 @@ class _NetworkFavoritesSearchPageState
       keyword = text;
       loadedComics = 0;
       loadedAnyPage = false;
+      request++;
       comicListKey = GlobalKey<ComicListState>();
     });
   }
 
-  Future<Res<List<Comic>>> _record(Future<Res<List<Comic>>> request) async {
-    final res = await request;
-    if (mounted && res.success) {
+  Future<Res<List<Comic>>> _record(
+    int submitted,
+    Future<Res<List<Comic>>> future,
+  ) async {
+    final res = await future;
+    if (mounted && res.success && submitted == request) {
       setState(() {
         loadedAnyPage = true;
         loadedComics += res.data.length;
@@ -94,14 +102,19 @@ class _NetworkFavoritesSearchPageState
 
   Widget buildResults() {
     final data = widget.data;
+    final submitted = request;
     return ComicList(
       key: comicListKey,
       loadPage: data.search == null
           ? null
-          : (page) => _record(data.search!(keyword, page, widget.folder)),
+          : (page) =>
+                _record(submitted, data.search!(keyword, page, widget.folder)),
       loadNext: data.search != null || data.searchNext == null
           ? null
-          : (next) => _record(data.searchNext!(keyword, next, widget.folder)),
+          : (next) => _record(
+              submitted,
+              data.searchNext!(keyword, next, widget.folder),
+            ),
       menuBuilder: (comic) {
         return [
           MenuEntry(

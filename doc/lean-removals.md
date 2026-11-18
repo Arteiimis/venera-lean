@@ -135,3 +135,16 @@
 - 测试：`test/local_comics_page_test.dart` 断言来源/占用文本位于 `ComicTile` 内。
 - 上游碰撞点：`comic.dart` 77 次提交（公共组件，只新增可选参数）、`local_comics_page.dart` 32 次。合并时保留本实现，不要让 `itemWrapper` 回来。
 - 状态：已完成。
+
+## 批次 8 收藏夹搜索与搜索性能
+
+背景：网络收藏夹没有任何搜索入口，源契约里也没有服务端搜索接口；本地收藏与本地漫画的实时搜索每敲一个字符都全量重算（收藏页逐条做简繁转换与 tag 翻译，本地库重跑 SQL 并解码整行），读过滤器还在每次 `build` 里逐条查历史。
+
+- 新增收藏夹服务端搜索：`FavoriteData.search`/`searchNext`（`lib/foundation/comic_source/favorites.dart`）、`lib/foundation/comic_source/parser.dart` 解析 `favorites.search`/`favorites.searchNext`（复用登录过期重试），`doc/comic_source.md` 补契约。`lib/pages/favorites/network_favorites_search.dart` 是搜索页：只调源的 `search`/`searchNext`，不做客户端逐页扫描；`network_favorites_page.dart` 仅在源实现了搜索时于 appbar 显示入口（含加载失败页）。`search` 优先于 `searchNext`，与 `loadComics`/`loadNext` 一致。
+- 新增 `lib/utils/comic_search.dart`：收藏搜索索引（预计算小写字段/tag 值，简繁转换与大小写判断每查询一次）与本地库索引（对齐原 SQL `LIKE` 语义）。本地收藏页、本地漫画页改为索引/内存过滤；本地漫画的 `_sizes` 缓存不再随每次按键清空。
+- 读过滤器：`HistoryManager.readCompletion()` 用一条轻查询生成快照，`local_favorites_page.dart` 只在收藏列表/过滤器/历史变化时重算；历史 key 改用收藏的 `type`（此前用 `sourceKey.hashCode`，本地类型收藏永远匹配不到历史）。
+- 修 `lib/utils/opencc.dart` 的 CRLF 解析：Windows 检出（`core.autocrlf=true`）时每行多一个 `\r` 被整行跳过，Windows 构建的简繁互搜此前完全失效，Linux 正常。
+- 上游碰撞点：`local_favorites_page.dart` 50、`local_comics_page.dart` 32、`parser.dart` 37、`history.dart` 29、`comic_source/favorites.dart` 5、`network_favorites_page.dart` 16、`opencc.dart` 3、`translation.json` 157（只加键）、`doc/comic_source.md` 8。合并时保留本实现。
+- 测试：`test/comic_search_test.dart`（含与旧匹配器的 parity）、`test/history_read_completion_test.dart`、`test/network_favorite_search_test.dart`（搜索调用、空结果、仅 `searchNext`、入口可见性）。
+- 源侧实现不在本仓库：本机 `comic_source/ehentai.js` 已加 `favorites.searchNext`（`favorites.php?f_search=` + `favcat`，下一页走站点 `next` 游标），版本同步到 1.2.1，供本地验证（原文件备份为 `ehentai.js.bak`）。已向 `venera-app/venera-configs` 提 PR #360：ehentai 源实现 + `_template_.js` 契约说明 + `index.json` 版本 1.1.8 → 1.2.1。
+- 状态：应用侧已完成；等源侧与上游合并策略确定。

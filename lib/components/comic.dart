@@ -46,8 +46,10 @@ class ComicTile extends StatelessWidget {
 
   final String? badge;
 
-  /// Compact label overlaid on the cover's bottom-right corner.
-  final Widget? footer;
+  /// Compact label shown at the bottom-right of the description area in
+  /// detailed mode. Brief mode ignores it, and the builder only runs when the
+  /// label is actually rendered.
+  final Widget Function()? footer;
 
   final List<MenuEntry>? menuOptions;
 
@@ -238,10 +240,9 @@ class ComicTile extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constrains) {
         final height = constrains.maxHeight - 16;
-        final coverWidth = height * 0.68;
 
         Widget image = Container(
-          width: coverWidth,
+          width: height * 0.68,
           height: double.infinity,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.secondaryContainer,
@@ -255,21 +256,7 @@ class ComicTile extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Positioned.fill(child: buildImage(context)),
-              if (footer != null)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: _coverLabel(
-                    footer!,
-                    _coverLabelFontSize(coverWidth),
-                    coverWidth,
-                  ),
-                ),
-            ],
-          ),
+          child: buildImage(context),
         );
 
         if (heroID != null) {
@@ -295,6 +282,7 @@ class ComicTile extends StatelessWidget {
                     subtitle: comic.subtitle ?? '',
                     description: comic.description,
                     badge: badge ?? comic.language,
+                    footer: footer?.call(),
                     tags: comic.tags,
                     maxLines: 2,
                     enableTranslate:
@@ -376,15 +364,6 @@ class ComicTile extends StatelessWidget {
                               ),
                             );
                           }
-                        }
-                        if (footer != null) {
-                          children.add(
-                            _coverLabel(
-                              footer!,
-                              fortSize,
-                              constraints.maxWidth,
-                            ),
-                          );
                         }
                         if (children.isEmpty) {
                           return const SizedBox();
@@ -571,6 +550,7 @@ class _ComicDescription extends StatelessWidget {
     required this.description,
     required this.enableTranslate,
     this.badge,
+    this.footer,
     this.maxLines = 2,
     this.tags,
     this.rating,
@@ -580,6 +560,7 @@ class _ComicDescription extends StatelessWidget {
   final String subtitle;
   final String description;
   final String? badge;
+  final Widget? footer;
   final List<String>? tags;
   final int maxLines;
   final bool enableTranslate;
@@ -706,6 +687,23 @@ class _ComicDescription extends StatelessWidget {
                   ),
                 ),
               ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 128),
+                  child: DefaultTextStyle.merge(
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.colorScheme.onSurface.toOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    child: footer!,
+                  ),
+                ),
+              ),
           ],
         ),
       ],
@@ -806,7 +804,8 @@ class SliverGridComics extends StatefulWidget {
 
   final List<Comic> comics;
 
-  /// Builds the compact label shown in each tile's bottom-right corner.
+  /// Builds the compact label shown at the bottom-right of the description in
+  /// detailed mode. Brief mode never calls it.
   final Widget Function(Comic comic)? footerBuilder;
 
   final Map<Comic, bool>? selections;
@@ -946,7 +945,9 @@ class _SliverGridComics extends StatelessWidget {
         var comic = ComicTile(
           comic: comics[index],
           badge: badge,
-          footer: footerBuilder?.call(comics[index]),
+          footer: footerBuilder == null
+              ? null
+              : () => footerBuilder!(comics[index]),
           menuOptions: menuBuilder?.call(comics[index]),
           onTap: onTap != null
               ? () => onTap!(comics[index], heroIDs[index])

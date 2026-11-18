@@ -130,7 +130,7 @@
 
 背景：上游把本地漫画的来源与磁盘占用作为独立一窄行挂在卡片下方（`SliverGridComics.itemWrapper` 包一层 `Column`），既占网格高度又把封面压小。
 
-- `lib/components/comic.dart`：`ComicTile` 新增可选 `footer`，作为半透明角标叠在封面右下角（唯一一种样式，两种显示模式一致）：详细模式在封面 `Stack` 的右下角，简报模式与已有的说明角标同一列（抽 `_coverLabel()` 复用角标样式与 `_coverLabelFontSize()` 字号分档）。不再走 `_ComicDescription`，描述行布局不变。`SliverGridComics`/`_SliverGridComics` 的 `itemWrapper` 换成 `footerBuilder`（上游 2.7.0 只为这个占用行加的包装钩子，现已无其它使用者）。
+- `lib/components/comic.dart`：`ComicTile` 新增可选 `footer`（懒构建 `Widget Function()?`），只在详细模式渲染在描述区底部右侧（卡片右下角）；简报模式不渲染也不调用构建器。`SliverGridComics`/`_SliverGridComics` 的 `itemWrapper` 换成 `footerBuilder`（上游 2.7.0 只为这个占用行加的包装钩子，现已无其它使用者），构建器只在详细模式调用，简报模式不会触发目录大小遍历。
 - `lib/pages/local_comics_page.dart`：`FutureBuilder<int>` 直接作为 `footerBuilder` 的返回值，不再包 `Column`/`Expanded`，卡片恢复满高；`_size()` 与 `_sizes` 缓存不变。
 - 测试：`test/local_comics_page_test.dart` 断言来源/占用文本位于 `ComicTile` 内。
 - 上游碰撞点：`comic.dart` 77 次提交（公共组件，只新增可选参数）、`local_comics_page.dart` 32 次。合并时保留本实现，不要让 `itemWrapper` 回来。

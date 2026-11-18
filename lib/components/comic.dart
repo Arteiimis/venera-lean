@@ -46,8 +46,7 @@ class ComicTile extends StatelessWidget {
 
   final String? badge;
 
-  /// Compact label pinned to the tile's bottom-right corner: after the
-  /// description in detailed mode, over the cover in brief mode.
+  /// Compact label overlaid on the cover's bottom-right corner.
   final Widget? footer;
 
   final List<MenuEntry>? menuOptions;
@@ -239,9 +238,10 @@ class ComicTile extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constrains) {
         final height = constrains.maxHeight - 16;
+        final coverWidth = height * 0.68;
 
         Widget image = Container(
-          width: height * 0.68,
+          width: coverWidth,
           height: double.infinity,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.secondaryContainer,
@@ -255,7 +255,21 @@ class ComicTile extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: buildImage(context),
+          child: Stack(
+            children: [
+              Positioned.fill(child: buildImage(context)),
+              if (footer != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: _coverLabel(
+                    footer!,
+                    _coverLabelFontSize(coverWidth),
+                    coverWidth,
+                  ),
+                ),
+            ],
+          ),
         );
 
         if (heroID != null) {
@@ -281,7 +295,6 @@ class ComicTile extends StatelessWidget {
                     subtitle: comic.subtitle ?? '',
                     description: comic.description,
                     badge: badge ?? comic.language,
-                    footer: footer,
                     tags: comic.tags,
                     maxLines: 2,
                     enableTranslate:
@@ -343,11 +356,9 @@ class ComicTile extends StatelessWidget {
                         final text = comic.description.isNotEmpty
                             ? comic.description.split('|').join('\n')
                             : (subtitle?.isNotEmpty == true ? subtitle : null);
-                        final fortSize = constraints.maxWidth < 80
-                            ? 8.0
-                            : constraints.maxWidth < 150
-                            ? 10.0
-                            : 12.0;
+                        final fortSize = _coverLabelFontSize(
+                          constraints.maxWidth,
+                        );
 
                         var children = <Widget>[];
                         if (text != null) {
@@ -403,6 +414,12 @@ class ComicTile extends StatelessWidget {
       },
     );
   }
+
+  double _coverLabelFontSize(double width) => width < 80
+      ? 8.0
+      : width < 150
+      ? 10.0
+      : 12.0;
 
   Widget _coverLabel(Widget child, double fontSize, double maxWidth) {
     return Container(
@@ -554,7 +571,6 @@ class _ComicDescription extends StatelessWidget {
     required this.description,
     required this.enableTranslate,
     this.badge,
-    this.footer,
     this.maxLines = 2,
     this.tags,
     this.rating,
@@ -564,7 +580,6 @@ class _ComicDescription extends StatelessWidget {
   final String subtitle;
   final String description;
   final String? badge;
-  final Widget? footer;
   final List<String>? tags;
   final int maxLines;
   final bool enableTranslate;
@@ -688,23 +703,6 @@ class _ComicDescription extends StatelessWidget {
                   child: Text(
                     "${badge![0].toUpperCase()}${badge!.substring(1).toLowerCase()}",
                     style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ),
-            if (footer != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 128),
-                  child: DefaultTextStyle.merge(
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: context.colorScheme.onSurface.toOpacity(0.7),
-                    ),
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    child: footer!,
                   ),
                 ),
               ),

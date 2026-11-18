@@ -9,6 +9,7 @@ import 'package:venera/pages/comic_details_page/comic_page.dart';
 import 'package:venera/pages/downloading_page.dart';
 import 'package:venera/pages/favorites/favorites_page.dart';
 import 'package:venera/utils/cbz.dart';
+import 'package:venera/utils/comic_search.dart';
 import 'package:venera/utils/epub.dart';
 import 'package:venera/utils/io.dart';
 import 'package:venera/utils/pdf.dart';
@@ -28,6 +29,12 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
 
   late LocalSortType sortType;
 
+  /// Decoded comics in the current sort order, kept so filtering never reads
+  /// the database again.
+  List<LocalComic> _all = [];
+
+  LibrarySearchIndex? _searchIndex;
+
   int? folder;
   bool uncategorized = false;
   bool customOrder = false;
@@ -43,10 +50,33 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
 
   void update() {
     if (!mounted) return;
+    _all = LocalManager().getComics(sortType);
+    _searchIndex = null;
+    _sizes.clear();
+    _applyFilter();
+  }
+
+  void _applyFilter() {
+    if (!mounted) return;
     final placements = LocalManager().library.placements;
-    final items = keyword.isEmpty
-        ? LocalManager().getComics(sortType)
-        : LocalManager().search(keyword);
+    List<LocalComic> items;
+    if (keyword.isEmpty) {
+      items = List.of(_all);
+    } else {
+      final index = _searchIndex ??= LibrarySearchIndex([
+        for (final comic in _all)
+          ComicSearchText(
+            title: comic.title,
+            subtitle: comic.subtitle,
+            tags: comic.tags,
+          ),
+      ]);
+      items = [for (final i in index.filter(keyword)) _all[i]];
+      if (!customOrder) {
+        // The old SQL search always returned the newest comics first.
+        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+    }
     items.removeWhere((c) {
       final assigned = placements[(c.id, c.comicType.value)]?.folder;
       return uncategorized
@@ -66,7 +96,6 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
       selectedComics.removeWhere(
         (c, _) => !items.any((v) => v.id == c.id && v.comicType == c.comicType),
       );
-      _sizes.clear();
     });
   }
 
@@ -217,7 +246,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
     var sort = appdata.implicitData["local_sort"] ?? "name";
     sortType = LocalSortType.fromString(sort);
     customOrder = appdata.implicitData['local_custom_order'] == true;
-    comics = LocalManager().getComics(sortType);
+    comics = [];
     update();
     LocalManager().addListener(update);
     super.initState();
@@ -492,8 +521,8 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                       setState(() {
                         searchMode = false;
                         keyword = "";
-                        update();
                       });
+                      _applyFilter();
                     }
                   },
                 ),
@@ -508,7 +537,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                       ),
                       onChanged: (v) {
                         keyword = v;
-                        update();
+                        _applyFilter();
                       },
                     ),
               actions: multiSelectMode ? selectActions : null,
@@ -527,7 +556,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                       onSelected: (_) {
                         folder = null;
                         uncategorized = false;
-                        update();
+                        _applyFilter();
                       },
                     ),
                     ChoiceChip(
@@ -536,7 +565,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                       onSelected: (_) {
                         folder = null;
                         uncategorized = true;
-                        update();
+                        _applyFilter();
                       },
                     ),
                     for (final f in LocalManager().library.folders)
@@ -546,7 +575,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                         onSelected: (_) {
                           folder = f.id;
                           uncategorized = false;
-                          update();
+                          _applyFilter();
                         },
                       ),
                   ],
@@ -651,8 +680,8 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
           setState(() {
             searchMode = false;
             keyword = "";
-            update();
           });
+          _applyFilter();
         }
       },
       child: body,

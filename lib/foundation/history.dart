@@ -194,6 +194,27 @@ class History implements Comic {
   }
 }
 
+/// Snapshot of the comics that have been read to their last page.
+///
+/// The favorites read filter needs this for every listed comic. Building the
+/// snapshot once avoids one database query per comic.
+class ReadCompletion {
+  ReadCompletion(this._completed);
+
+  final Set<String> _completed;
+
+  bool isCompleted(String id, ComicType type) =>
+      _completed.contains("${type.value}:$id");
+
+  /// Whether [other] holds the same comics, so callers can skip rebuilds.
+  bool sameAs(ReadCompletion? other) {
+    if (other == null || other._completed.length != _completed.length) {
+      return false;
+    }
+    return _completed.containsAll(other._completed);
+  }
+}
+
 class HistoryManager with ChangeNotifier {
   static HistoryManager? cache;
 
@@ -451,6 +472,23 @@ class HistoryManager with ChangeNotifier {
       return null;
     }
     return History.fromRow(res.first);
+  }
+
+  /// Which comics have been read to their last page.
+  ///
+  /// Reads only the columns the read filter needs, so callers can refresh it
+  /// without decoding every history row.
+  ReadCompletion readCompletion() {
+    if (_cachedHistoryIds == null) {
+      updateCache();
+    }
+    final res = _db.select("""
+      select id, type from history
+      where page == max_page;
+    """);
+    return ReadCompletion({
+      for (var element in res) "${element["type"]}:${element["id"]}",
+    });
   }
 
   List<History> getAll() {

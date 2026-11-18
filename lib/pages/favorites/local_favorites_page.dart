@@ -36,7 +36,6 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
   late List<String> added = [];
 
   String keyword = "";
-  bool searchHasUpper = false;
 
   bool searchMode = false;
 
@@ -54,20 +53,84 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
 
   var searchResults = <FavoriteItem>[];
 
+  FavoriteSearchIndex? _searchIndex;
+
+  String? _searchIndexLocale;
+
+  List<FavoriteItem>? _filteredComics;
+
+  bool _filterDirty = true;
+
+  ReadCompletion? _readCompletion;
+
+  bool get _readFilterActive =>
+      readFilterSelect == "UnCompleted" || readFilterSelect == "Completed";
+
+  void _setComics(List<FavoriteItem> value) {
+    comics = value;
+    _searchIndex = null;
+    _filteredComics = null;
+    _filterDirty = true;
+  }
+
+  /// The read filter is applied to [comics] once and cached; [build] must not
+  /// ask the database for every listed comic.
+  List<FavoriteItem> _visibleComics() {
+    final cached = _filteredComics;
+    if (!_filterDirty && cached != null) {
+      return cached;
+    }
+    _filterDirty = false;
+    final completion = _readFilterActive
+        ? (_readCompletion ??= HistoryManager().readCompletion())
+        : null;
+    if (completion == null) {
+      return _filteredComics = comics;
+    }
+    final completed = readFilterSelect == "Completed";
+    return _filteredComics = [
+      for (final comic in comics)
+        if (completion.isCompleted(comic.id, comic.type) == completed) comic,
+    ];
+  }
+
+  void _onHistoryChanged() {
+    if (!_readFilterActive) {
+      return;
+    }
+    final completion = HistoryManager().readCompletion();
+    if (completion.sameAs(_readCompletion)) {
+      return;
+    }
+    setState(() {
+      _readCompletion = completion;
+      _filterDirty = true;
+    });
+  }
+
   void updateSearchResult() {
     setState(() {
       if (keyword.trim().isEmpty) {
         searchResults = comics;
-      } else {
-        searchResults = [];
-        for (var comic in comics) {
-          if (matchKeyword(keyword, comic) ||
-              matchKeywordT(keyword, comic) ||
-              matchKeywordS(keyword, comic)) {
-            searchResults.add(comic);
-          }
-        }
+        return;
       }
+      var searchIndex = _searchIndex;
+      final locale = App.locale.languageCode;
+      if (searchIndex == null || _searchIndexLocale != locale) {
+        searchIndex = FavoriteSearchIndex([
+          for (final comic in comics)
+            ComicSearchText(
+              title: comic.title,
+              subtitle: comic.subtitle ?? '',
+              tags: comic.tags,
+            ),
+        ]);
+        _searchIndex = searchIndex;
+        _searchIndexLocale = locale;
+      }
+      searchResults = [
+        for (final i in searchIndex.filter(keyword)) comics[i],
+      ];
     });
   }
 
@@ -76,7 +139,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
     if (isAllFolder) {
       var totalComics = manager.totalComics;
       if (totalComics < _asyncDataFetchLimit) {
-        comics = manager.getAllComics();
+        _setComics(manager.getAllComics());
       } else {
         isLoading = true;
         manager
@@ -86,7 +149,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
           if (mounted) {
             setState(() {
               isLoading = false;
-              comics = value;
+              _setComics(value);
               if (searchMode && keyword.trim().isEmpty) {
                 searchResults = value;
               }
@@ -97,7 +160,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
     } else {
       var folderComics = manager.folderComics(widget.folder);
       if (folderComics < _asyncDataFetchLimit) {
-        comics = manager.getFolderComics(widget.folder);
+        _setComics(manager.getFolderComics(widget.folder));
       } else {
         isLoading = true;
         manager
@@ -107,7 +170,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
           if (mounted) {
             setState(() {
               isLoading = false;
-              comics = value;
+              _setComics(value);
             });
           }
         });
@@ -119,78 +182,6 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
     setState(() {});
   }
 
-  List<FavoriteItem> filterComics(List<FavoriteItem> curComics) {
-    if (readFilterSelect != "UnCompleted" && readFilterSelect != "Completed") {
-      return curComics;
-    }
-    return curComics.where((comic) {
-      var history =
-          HistoryManager().find(comic.id, ComicType(comic.sourceKey.hashCode));
-      if (readFilterSelect == "UnCompleted") {
-        return history == null || history.page != history.maxPage;
-      } else if (readFilterSelect == "Completed") {
-        return history != null && history.page == history.maxPage;
-      }
-      return true;
-    }).toList();
-  }
-
-  bool matchKeyword(String keyword, FavoriteItem comic) {
-    var list = keyword.split(" ");
-    for (var k in list) {
-      if (k.isEmpty) continue;
-      if (checkKeyWordMatch(k, comic.title, false)) {
-        continue;
-      } else if (comic.subtitle != null && checkKeyWordMatch(k, comic.subtitle!, false)) {
-        continue;
-      } else if (comic.tags.any((tag) {
-        if (checkKeyWordMatch(k, tag, true)) {
-          return true;
-        } else if (tag.contains(':') && checkKeyWordMatch(k, tag.split(':')[1], true)) {
-          return true;
-        } else if (App.locale.languageCode != 'en' &&
-            checkKeyWordMatch(k, tag.translateTagsToCN, true)) {
-          return true;
-        }
-        return false;
-      })) {
-        continue;
-      } else if (checkKeyWordMatch(k, comic.author, true)) {
-        continue;
-      }
-      return false;
-    }
-    return true;
-  }
-
-  bool checkKeyWordMatch(String keyword, String compare, bool needEqual) {
-    String temp = compare;
-    // 没有大写的话, 就转成小写比较, 避免搜索需要注意大小写
-    if (!searchHasUpper) {
-      temp = temp.toLowerCase();
-    }
-    if (needEqual) {
-      return  keyword == temp;
-    }
-    return temp.contains(keyword);
-  }
-  // Convert keyword to traditional Chinese to match comics
-  bool matchKeywordT(String keyword, FavoriteItem comic) {
-    if (!OpenCC.hasChineseSimplified(keyword)) {
-      return false;
-    }
-    keyword = OpenCC.simplifiedToTraditional(keyword);
-    return matchKeyword(keyword, comic);
-  }
-
-  // Convert keyword to simplified Chinese to match comics
-  bool matchKeywordS(String keyword, FavoriteItem comic) {
-    if (!OpenCC.hasChineseTraditional(keyword)) {
-      return false;
-    }
-    keyword = OpenCC.traditionalToSimplified(keyword);
-    return matchKeyword(keyword, comic);
-  }
   @override
   void initState() {
     searchMode = widget.initialSearch;
@@ -208,6 +199,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
     comics = [];
     updateComics();
     LocalFavoritesManager().addListener(updateComics);
+    HistoryManager().addListener(_onHistoryChanged);
     super.initState();
   }
 
@@ -215,6 +207,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
   void dispose() {
     super.dispose();
     LocalFavoritesManager().removeListener(updateComics);
+    HistoryManager().removeListener(_onHistoryChanged);
   }
 
   void selectAll() {
@@ -370,8 +363,9 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
                           updateConfig: (readFilter) {
                             setState(() {
                               readFilterSelect = readFilter;
+                              _readCompletion = null;
+                              _filterDirty = true;
                             });
-                            updateComics();
                           },
                         );
                       },
@@ -387,7 +381,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
                     setState(() {
                       keyword = "";
                       searchMode = true;
-                      updateSearchResult();
+                      searchResults = comics;
                     });
                   },
                 ),
@@ -454,7 +448,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
                             return _ReorderComicsPage(
                               widget.folder,
                               (comics) {
-                                this.comics = comics;
+                                _setComics(comics);
                               },
                             );
                           },
@@ -479,7 +473,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
                         updateComicsInfo(widget.folder).then((newComics) {
                           if (mounted) {
                             setState(() {
-                              comics = newComics;
+                              _setComics(newComics);
                             });
                           }
                         });
@@ -644,7 +638,6 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
               ),
               onChanged: (v) {
                 keyword = v;
-                searchHasUpper = keyword.contains(RegExp(r'[A-Z]'));
                 updateSearchResult();
               },
             ).paddingBottom(8).paddingRight(8),
@@ -660,7 +653,7 @@ class _LocalFavoritesPageState extends State<_LocalFavoritesPage> {
           )
         else
           SliverGridComics(
-            comics: searchMode ? searchResults : filterComics(comics),
+            comics: searchMode ? searchResults : _visibleComics(),
             selections: selectedComics,
             menuBuilder: (c) {
               return [

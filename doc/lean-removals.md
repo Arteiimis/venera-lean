@@ -148,3 +148,15 @@
 - 测试：`test/comic_search_test.dart`（含与旧匹配器的 parity）、`test/history_read_completion_test.dart`、`test/network_favorite_search_test.dart`（搜索调用、空结果、仅 `searchNext`、入口可见性）。
 - 源侧实现不在本仓库：本机 `comic_source/ehentai.js` 已加 `favorites.searchNext`（`favorites.php?f_search=` + `favcat`，下一页走站点 `next` 游标），版本同步到 1.2.1，供本地验证（原文件备份为 `ehentai.js.bak`）。已向 `venera-app/venera-configs` 提 PR #360：ehentai 源实现 + `_template_.js` 契约说明 + `index.json` 版本 1.1.8 → 1.2.1。
 - 状态：应用侧已完成；等源侧与上游合并策略确定。
+## 批次 9 工具链与依赖（Flutter 3.50.1）
+
+背景：升级 Flutter 与两个热点依赖，并在 Windows 上用自建基线脚本量化渲染路径。
+
+- Flutter 3.41.4 → 3.50.1：`.fvmrc`、`pubspec.yaml` 的 `flutter:` 精确约束、`.github/workflows/release.yml` 三处 `flutter-version` 同步。上游仍为 3.41.4，同步上游时 `.fvmrc`、`pubspec.yaml`、`release.yml` 以本仓库为准。
+- 分析门禁：3.50 起 `package:flutter/material.dart` 被标记废弃（建议 `package:material_ui/material_ui.dart`），全仓约 100 个文件；import 迁移未做，CI 的 `flutter analyze` 改为 `--no-fatal-infos`，保留可见的 info。迁移落地后改回原样。
+- Windows 关闭 Impeller（`windows/runner/main.cpp`）：3.47 起桌面默认 Impeller，本机量测首帧光栅 290 ms（Skia 30 ms）、列表滚动光栅 p50 1043 µs（Skia 657 µs）；关闭后 3.50.1 与 3.41.4 持平（首帧 21 ms、列表 629 µs）。改开关属于对上游行为的改写，上游合并时保留。
+- `packages/rhttp/pubspec.yaml`：`flutter_rust_bridge` 由 `^2.11.1` 改为精确 `2.11.1`，与 `frb_generated.dart` 的 `codegenVersion` 及 `rust/Cargo.toml` 的 `=2.11.1` 对齐，避免升级后 pub 解析抬高 Dart 侧导致初始化失败。
+- `flutter_qjs` 改为 `github.com/Arteiimis/flutter_qjs` 的 `a8ad8ec`：内置 quickjs-ng 从 0.8.0（2024-02-14）升到 0.18.0，`cxx/ffi.cpp` 适配新 API（`JSInterruptHandler` 收到 `JSContext*`、`JS_IsArray`/`JS_IsError` 去掉 ctx），`cxx/quickjs.cmake` 跟随上游文件布局（去掉 libbf、加 dtoa）。上游 pin 的是 venera-app 的旧提交，合并时保留本引用。
+- `archive` 4.0.7 → 4.7.1：解压/写入路径的量化收益来自上游 changelog（deflate 约 2.5 倍、逐条读 zip 约 1.5 倍）。
+- 新增 Windows 帧基线：`integration_test/performance_frames_test.dart` + `tool/test_performance_windows.ps1`（profile 构建直接运行，采样写 `.dart_tool/performance-audit/`；`flutter drive` 无法稳定 attach Windows profile 进程，故不走 drive）。
+- 状态：已完成；material_ui 迁移待办。

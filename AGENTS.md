@@ -11,7 +11,8 @@
 
 ## 工具链与测试
 
-- 一律 `fvm flutter` / `fvm dart`（`.fvmrc` 固定 3.41.4，与 CI 一致）。系统 Flutter 3.50 会改写 `pubspec.lock` 和 `analysis_options.yaml`。
+- 一律 `fvm flutter` / `fvm dart`（`.fvmrc` 固定 3.50.1，与 CI 一致）。系统 Flutter 会改写 `pubspec.lock` 和 `analysis_options.yaml`。
+- Windows 帧基线：`pwsh tool/test_performance_windows.ps1`（profile 构建，采样写入 `.dart_tool/performance-audit/`），升级 Flutter 或改渲染相关代码前后各跑一次对比。
 - 跑数据库相关测试前把 `D:\tools\sqlite3` 加进 `PATH`（提供 `sqlite3.dll`），否则全部 DB 测试报 `Failed to load dynamic library`。
 - `fvm dart format` 只格式化本次改到的文件：全量会重排约 60 个无关文件。
 - 用 rg 挑测试文件时排除 `test/support/`（那是 fixture 不是测试），否则 `flutter test` 报 loading 失败。

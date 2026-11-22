@@ -105,7 +105,7 @@ void main() {
         find.byType(ReorderableListView),
       );
       await tester.runAsync(() async {
-        list.onReorder(0, 3);
+        list.onReorder!(0, 3);
         await appdata.saveData(false);
       });
       await tester.pumpAndSettle();

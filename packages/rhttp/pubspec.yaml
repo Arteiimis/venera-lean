@@ -18,7 +18,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_rust_bridge: ^2.11.1
+  # Exact pin: lib/src/rust/frb_generated.dart asserts codegenVersion 2.11.1
+  # and rust/Cargo.toml pins the same native crate.
+  flutter_rust_bridge: 2.11.1
   freezed_annotation: ^3.0.0
   http: ^1.5.0
   http_profile: ^0.1.0

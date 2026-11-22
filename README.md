@@ -1,6 +1,6 @@
 # Venera Lean
 
-[![flutter](https://img.shields.io/badge/flutter-3.41.4-blue)](https://flutter.dev/)
+[![flutter](https://img.shields.io/badge/flutter-3.50.1-blue)](https://flutter.dev/)
 
 Venera Lean is an independently maintained, slimmed-down fork of [Venera Prime](https://github.com/venera-app/venera-prime), which in turn derives from [Venera](https://github.com/venera-app/venera) (now archived).
 

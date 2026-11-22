@@ -19,6 +19,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   flutter::DartProject project(L"data");
 
+  // Impeller (the 3.47+ Windows default) measured 9-10x slower to first frame
+  // and ~55% slower steady-state raster than the Skia path on this app's
+  // scenes; see doc/lean-removals.md (batch 9). Re-measure with
+  // tool/test_performance_windows.ps1 before removing this switch.
+  project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 

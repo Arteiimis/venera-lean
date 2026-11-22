@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/components/search_results_list.dart';
 import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/comic_source/comic_source.dart';
+import 'package:venera/foundation/image_provider/cached_image.dart';
 import 'package:venera/foundation/res.dart';
 import 'package:venera/utils/translations.dart';
 
@@ -195,9 +196,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(visible.last, 2);
       await tester.pumpWidget(const SizedBox());
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      // Covers load through CachedImageProvider's eight-slot concurrency gate;
+      // let the queued file reads finish before the test ends.
+      for (var i = 0; i < 50 && CachedImageProvider.loadingCount > 0; i++) {
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        });
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(CachedImageProvider.loadingCount, 0);
       await tester.pump(const Duration(seconds: 10));
       expect(tester.takeException(), isNull);
     },

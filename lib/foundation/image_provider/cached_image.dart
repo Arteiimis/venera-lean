@@ -45,7 +45,9 @@ class CachedImageProvider
     try {
       if(url.startsWith("file://")) {
         var file = File(url.substring(7));
-        return file.readAsBytes();
+        // Await so the finally block releases the loading slot after the read,
+        // as the chunked branch below already does.
+        return await file.readAsBytes();
       }
       await for (var progress in ImageDownloader.loadThumbnail(url, sourceKey, cid)) {
         checkStop();

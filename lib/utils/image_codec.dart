@@ -44,7 +44,7 @@ Future<ui.Codec> decodeImageBytes(
       // A still image must not retain a worker/isolate while in ImageCache.
       final frame = await worker.next();
       worker.dispose();
-      return frameCodec(frame);
+      return await frameCodec(frame);
     }
     return _AnimatedAvifCodec(worker, frameCodec);
   } catch (_) {

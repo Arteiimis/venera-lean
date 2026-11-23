@@ -202,3 +202,15 @@
 - 上游碰撞点：98 个文件的 import 行、`main.dart`、四个重排页面。上游仍在 3.41.4 且全量 import `flutter/material.dart`，合并时 import 一律以本仓库为准。
 - 测试：`fvm flutter analyze` 无任何 issue；`fvm flutter test --exclude-tags environment` 本机 380 通过、20 跳过、0 失败。
 - 状态：已完成。
+
+## 批次 13 Windows 3.50 引擎崩溃的临时修复（ANGLE D3D11 多线程保护）
+
+背景：升级 Flutter 3.50.1 后，Windows 版在长列表（本地页 188 本）快速滚动时**直接闪退、无 Dart 异常**。事件查看器固定指向 `nvwgf2umx.dll`（NVIDIA D3D11 驱动）`0xc0000005`，偏移稳定在 `+0x612f73`；崩溃线程是驱动自己起的 worker，另一线程停在 `ID3D11DeviceContext::Flush`。
+
+- 定位：二分确认与业务代码无关——同一份代码用 3.41.4 引擎（`e65d4ac`）不崩，只有 3.50.1 崩；`master`（含本地占用缓存批次）与只含 material_ui 批次的分支都会崩。上游对应 issue：flutter/flutter#196846（NVIDIA 上 3.50.0 崩、3.47.9 正常）与 #196618（3.50 的 ANGLE 改版后 `eglSwapBuffers` 不再排除 IO 线程的 GL 调用，两个线程同时用同一个 D3D11 immediate context）。修复 PR #196897 / CP #196991（给 ANGLE 的设备开 `ID3D10Multithread::SetMultithreadProtected(TRUE)`）在 2026-11-19 合入，而 3.50.1 的引擎构建于 2026-11-18，故不含此修复；当时最新的 beta 3.51.0-0.2.pre 同样早于该修复。
+- 做法：新增 `windows/runner/d3d11_multithread_patch.{h,cpp}`，在 `main.cpp` 建窗口前调用 `venera::InstallD3D11MultithreadPatch()`。实现方式是把 `flutter_windows.dll` 导入表里的 `kernel32!GetProcAddress` 换成自己的包装，拦到 `D3D11CreateDevice` / `D3D11CreateDeviceAndSwapChain` 后返回包装函数：调用真实创建函数，成功后 `QueryInterface(ID3D10Multithread)` 并 `SetMultithreadProtected(TRUE)`。引擎（ANGLE）是运行时解析 d3d11 入口的，所以能拦到它创建的设备。
+- 坑（已踩过一次）：`GetProcAddress` 也接受**序号**，此时第二个参数是小整数而非字符串指针；包装里必须先判断 `(reinterpret_cast<ULONG_PTR>(name) >> 16) == 0` 就直接放行，否则启动即 `0xc0000409`（ucrtbase 快速失败）。
+- 验证：补丁前，同一份构建用脚本连续甩动本地页 20 次必崩（两次复现、均生成 dump）；补丁后连续 120 次甩动无崩溃、无新 dump，用户手工验证正常。`fvm flutter analyze` 与测试套件不受影响（纯 Windows runner 代码）。
+- 移除条件：升级到包含 #196897（或上游正式发布的 3.50.2+）后，删除这两个文件、`main.cpp` 中的调用与 `CMakeLists.txt` 里的源文件条目。上游修复做的事与本补丁相同，重复启用无副作用，只是多余。
+- 上游碰撞点：`windows/runner/main.cpp` 已有本仓库自己的改动（关闭 Impeller），合并上游时保留两处。
+- 状态：已完成；待 Flutter 升级后移除。

@@ -9,6 +9,26 @@ rootProject.layout.buildDirectory.set(new File(rootProject.projectDir, "../build
 subprojects {
     project.layout.buildDirectory.set(new File(rootProject.projectDir, "../build/${project.name}"))
 }
+
+// AGP 9 fails the build when a library module compiles against an SDK older than
+// its dependencies require, and pinned plugins still declare 33. Lift every
+// Android module to the app's compileSdk (Flutter 3.50 defaults to 36).
+// Registered before :app is force-evaluated below, since afterEvaluate throws
+// once a project has been evaluated.
+subprojects { sub ->
+    sub.afterEvaluate {
+        def androidExt = sub.extensions.findByName("android")
+        if (androidExt == null) {
+            return
+        }
+        if (androidExt.hasProperty("compileSdk")) {
+            androidExt.compileSdk = 36
+        } else if (androidExt.hasProperty("compileSdkVersion")) {
+            androidExt.compileSdkVersion = 36
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

@@ -2,7 +2,7 @@ name: venera
 description: "Venera Lean - a lean, independently maintained comic reader."
 publish_to: 'none'
 
-version: 2026.11.0+30001
+version: 2026.11.1+30002
 
 environment:
   sdk: '>=3.8.0 <4.0.0'

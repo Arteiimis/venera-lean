@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:rhttp/rhttp.dart' as rhttp;
 import 'package:venera/foundation/appdata.dart';
@@ -221,7 +222,7 @@ class MyLogInterceptor implements Interceptor {
 
 class AppDio extends DioForNative {
   AppDio([super.baseOptions]) {
-    httpClientAdapter = RHttpAdapter();
+    httpClientAdapter = adapterOverride?.call() ?? RHttpAdapter();
     if (App.isInitialized) {
       final cookieJar = SingleInstanceCookieJar.instance;
       if (cookieJar != null) {
@@ -232,6 +233,11 @@ class AppDio extends DioForNative {
       interceptors.add(MyLogInterceptor());
     }
   }
+
+  /// Transport used by new instances. Tests that run where the native rhttp
+  /// library cannot be loaded substitute dio's own `HttpClient` adapter.
+  @visibleForTesting
+  static HttpClientAdapter Function()? adapterOverride;
 
   static final Map<String, Future<void>> _requests = {};
 

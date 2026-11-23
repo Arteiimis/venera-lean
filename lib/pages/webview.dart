@@ -115,7 +115,9 @@ class _AppWebviewState extends State<AppWebview> {
         }
       }
     }
-    if (!App.isWindows) {
+    // Follow the target platform, like the Android check above, so tests can
+    // exercise this branch on any host.
+    if (defaultTargetPlatform != TargetPlatform.windows) {
       return true;
     }
     AppWebview.webViewEnvironment = await WebViewEnvironment.create(

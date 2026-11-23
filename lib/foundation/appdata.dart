@@ -58,9 +58,12 @@ class Appdata with Init {
   Future<void> flushSearchProgress() async {
     _searchSaveTimer?.cancel();
     _searchSaveTimer = null;
-    if (!_searchProgressDirty) return;
-    _searchProgressDirty = false;
-    await saveData();
+    if (_searchProgressDirty) {
+      _searchProgressDirty = false;
+      await saveData();
+    }
+    // rememberSearch saves in the background; wait for that write as well.
+    await _pendingSave;
   }
 
   void removeSearchEntry(SearchHistoryEntry entry) {
@@ -77,8 +80,6 @@ class Appdata with Init {
     _searchProgressDirty = false;
     searchRecords = SearchHistoryEntry.decode(value);
   }
-
-  bool _isSavingData = false;
 
   static final _invalidSetting = Object();
 
@@ -137,34 +138,59 @@ class Appdata with Init {
     return result;
   }
 
-  Future<void> saveData([bool sync = true]) async {
-    while (_isSavingData) {
-      await Future.delayed(const Duration(milliseconds: 20));
-    }
-    _isSavingData = true;
-    try {
-      var futures = <Future>[];
-      var json = toJson();
-      var data = jsonEncode(json);
-      var file = File(FilePath.join(App.dataPath, 'appdata.json'));
-      futures.add(atomicWriteString(file, data));
+  /// Every settings write goes through this chain so that the atomic
+  /// replaces never interleave and callers can wait for all queued writes.
+  /// The chain lives in the root zone and starts lazily: a future created
+  /// inside a widget test's fake-async zone would never complete once that
+  /// zone stops being pumped.
+  Future<void>? _writeChain;
 
-      var disableSyncFields =
-          json["settings"]["disableSyncFields"]?.toString() ?? '';
-      var json4sync = jsonDecode(data);
-      final customDisableSync = splitField(disableSyncFields);
-      _removeSyncDisabledFields(
-        json4sync["settings"],
-        {..._disableSync, ...customDisableSync}.toList(),
-      );
-      var data4sync = jsonEncode(json4sync);
-      var file4sync = File(FilePath.join(App.dataPath, 'syncdata.json'));
-      futures.add(atomicWriteString(file4sync, data4sync));
+  /// Tail of the write chain, so a flushing caller can wait for every write
+  /// that was already queued rather than only the last one.
+  Future<void> _pendingSave = Future<void>.value();
 
-      await Future.wait(futures);
-    } finally {
-      _isSavingData = false;
-    }
+  Future<void> _enqueueWrite(Future<void> Function() write) {
+    return Zone.root.run(() {
+      final chain = _writeChain;
+      final result = chain == null
+          ? Future<void>.sync(write)
+          : chain.then((_) => write());
+      // A failed write must not poison the writes queued behind it.
+      _writeChain = result.then<void>((_) {}, onError: (Object _) {});
+      return result;
+    });
+  }
+
+  /// Writes appdata.json and syncdata.json. Writes are serialized: a call that
+  /// arrives during a write runs after it and captures the newer state, so no
+  /// setting is lost and both files are replaced atomically.
+  Future<void> saveData([bool sync = true]) {
+    final result = _enqueueWrite(() => _writeData(sync));
+    final chain = _writeChain;
+    if (chain != null) _pendingSave = chain;
+    return result;
+  }
+
+  Future<void> _writeData(bool sync) async {
+    var futures = <Future>[];
+    var json = toJson();
+    var data = jsonEncode(json);
+    var file = File(FilePath.join(App.dataPath, 'appdata.json'));
+    futures.add(atomicWriteString(file, data));
+
+    var disableSyncFields =
+        json["settings"]["disableSyncFields"]?.toString() ?? '';
+    var json4sync = jsonDecode(data);
+    final customDisableSync = splitField(disableSyncFields);
+    _removeSyncDisabledFields(
+      json4sync["settings"],
+      {..._disableSync, ...customDisableSync}.toList(),
+    );
+    var data4sync = jsonEncode(json4sync);
+    var file4sync = File(FilePath.join(App.dataPath, 'syncdata.json'));
+    futures.add(atomicWriteString(file4sync, data4sync));
+
+    await Future.wait(futures);
     if (sync) {
       DataSync().uploadData();
     }
@@ -373,18 +399,10 @@ class Appdata with Init {
 
   var implicitData = <String, dynamic>{};
 
-  void writeImplicitData() async {
-    while (_isSavingData) {
-      await Future.delayed(const Duration(milliseconds: 20));
-    }
-    _isSavingData = true;
-    try {
-      var file = File(FilePath.join(App.dataPath, 'implicitData.json'));
-      await atomicWriteString(file, jsonEncode(implicitData));
-    } finally {
-      _isSavingData = false;
-    }
-  }
+  Future<void> writeImplicitData() => _enqueueWrite(() async {
+    var file = File(FilePath.join(App.dataPath, 'implicitData.json'));
+    await atomicWriteString(file, jsonEncode(implicitData));
+  });
 
   @override
   Future<void> doInit() async {

@@ -11,6 +11,8 @@ import 'package:venera/foundation/home_layout.dart';
 import 'package:venera/pages/settings/home_layout_page.dart';
 import 'package:venera/utils/translations.dart';
 
+import 'support/temp_dir.dart';
+
 void main() {
   test(
     'favorite modules and compact preference persist and can be removed',
@@ -157,7 +159,7 @@ void main() {
       appdata.restoreMemorySnapshot(snapshot);
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
-      await tester.runAsync(() => root.delete(recursive: true));
+      await deleteTempDirectory(tester, root);
     }
   });
 }

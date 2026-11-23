@@ -2,7 +2,7 @@ import 'package:archive/archive.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/comic_type.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_saf/flutter_saf.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';

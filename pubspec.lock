@@ -160,6 +160,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.2"
+  cupertino_ui:
+    dependency: transitive
+    description:
+      name: cupertino_ui
+      sha256: c3eaf7f5bdfee36deb0b14a4cbf7602f1b6b8d8b8576b81f38fc08c25881c94c
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.7"
   dbus:
     dependency: transitive
     description:
@@ -205,10 +213,10 @@ packages:
     dependency: "direct main"
     description:
       name: dynamic_color
-      sha256: "43a5a6679649a7731ab860334a5812f2067c2d9ce6452cf069c5e0c25336c17c"
+      sha256: "869b3bce0100eb519768ecd71c0111f0b5ea679f5f62e1f59c49d80067e730c5"
       url: "https://pub.dev"
     source: hosted
-    version: "1.8.1"
+    version: "2.1.0"
   enough_convert:
     dependency: "direct main"
     description:
@@ -317,10 +325,10 @@ packages:
     dependency: "direct main"
     description:
       name: flex_seed_scheme
-      sha256: a3183753bbcfc3af106224bff3ab3e1844b73f58062136b7499919f49f3667e7
+      sha256: "08f9ee11f9a08c2dee76d0a07ea824c8a09ea4db9456e32ac4f6dfb34d28392c"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.1"
+    version: "5.0.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -693,6 +701,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  material_ui:
+    dependency: "direct main"
+    description:
+      name: material_ui
+      sha256: a6b19012df437a356cbc01f8ea22a105e07194c47c9a6009da0032a0ce35c4ab
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.11.1"
   meta:
     dependency: transitive
     description:
@@ -1221,5 +1237,5 @@ packages:
     source: hosted
     version: "0.0.13"
 sdks:
-  dart: ">=3.13.0-0 <4.0.0"
+  dart: ">=3.13.0 <4.0.0"
   flutter: ">=3.50.1"

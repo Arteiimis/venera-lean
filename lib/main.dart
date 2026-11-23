@@ -2,9 +2,8 @@ import 'dart:async';
 import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:venera/foundation/log.dart';
 import 'package:venera/pages/auth_page.dart';
 import 'package:venera/pages/main_page.dart';
@@ -298,10 +297,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             _ => ThemeMode.system,
           },
           color: Colors.transparent,
-          localizationsDelegates: [
-            GlobalMaterialLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           locale: () {
             var lang = appdata.settings['language'];
             if (lang == 'system') {
@@ -381,9 +377,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 );
               }
               return _SystemUiProvider(
-                Material(
-                  color: App.isLinux ? Colors.transparent : null,
-                  child: widget,
+                // Dependencies that still import package:flutter/material.dart
+                // (photo_view, mobile_scanner, flutter_inappwebview, ...) look
+                // up the legacy Theme; the bridge maps ours for them. It is
+                // itself deprecated because it is meant to disappear once
+                // those packages migrate.
+                // ignore: deprecated_member_use
+                MaterialUiCompatibilityBridge(
+                  child: Material(
+                    color: App.isLinux ? Colors.transparent : null,
+                    child: widget,
+                  ),
                 ),
               );
             }

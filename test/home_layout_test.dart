@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/foundation/app.dart';
@@ -107,7 +107,9 @@ void main() {
         find.byType(ReorderableListView),
       );
       await tester.runAsync(() async {
-        list.onReorder!(0, 3);
+        // onReorderItem already accounts for the removed item, so this moves
+        // the first module to index 2 without the old manual fixup.
+        list.onReorderItem!(0, 2);
         await appdata.saveData(false);
       });
       await tester.pumpAndSettle();

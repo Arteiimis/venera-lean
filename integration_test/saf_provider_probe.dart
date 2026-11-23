@@ -1,7 +1,7 @@
 // Manual diagnostic APK. Never run on the production package.
 import 'dart:convert';
 import 'package:archive/archive.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_saf/flutter_saf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:venera/foundation/app.dart';

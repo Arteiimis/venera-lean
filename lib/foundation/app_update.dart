@@ -205,7 +205,25 @@ class AppUpdateDownloader {
       if (await target.exists()) await target.delete();
       return await partial.rename(target.path);
     } finally {
-      if (await partial.exists()) await partial.delete();
+      await _deletePartial(partial);
+    }
+  }
+
+  /// Removes the .part file without masking the real failure.
+  ///
+  /// A cancelled download can still hold the sink open for a moment; Windows
+  /// then refuses the delete with a sharing/access violation, and letting that
+  /// exception escape would hide the cancellation. A leftover .part is
+  /// harmless because the next download truncates it.
+  static Future<void> _deletePartial(File partial) async {
+    for (var attempt = 0; attempt < 20; attempt++) {
+      try {
+        if (await partial.exists()) await partial.delete();
+        return;
+      } on FileSystemException {
+        if (attempt == 19) return;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
     }
   }
 }

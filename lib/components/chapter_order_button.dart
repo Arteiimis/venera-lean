@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:venera/utils/chapter_order.dart';
 import 'package:venera/utils/chapter_navigation.dart';
 import 'package:venera/utils/translations.dart';

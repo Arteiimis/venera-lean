@@ -161,7 +161,7 @@
 - 新增 Windows 帧基线：`integration_test/performance_frames_test.dart` + `tool/test_performance_windows.ps1`（profile 构建直接运行，采样写 `.dart_tool/performance-audit/`；`flutter drive` 无法稳定 attach Windows profile 进程，故不走 drive）。
 - Android 工具链跟随 3.50 的硬性下限（Gradle ≥ 9.3.1、AGP ≥ 9.1.1、KGP ≥ 2.4.10）：`android/gradle/wrapper/gradle-wrapper.properties` 8.13 → 9.5.0，`android/settings.gradle` → AGP 9.3.1 / KGP 2.4.20，`android/gradle.properties` 按 Flutter 模板固定 `android.newDsl=false`、`android.builtInKotlin=false` 并移除 AGP 9 已删除的 Jetifier 等开关。Gradle 9 删除 `Project.buildDir` 与 `Project.exec`，根脚本改用 `layout.buildDirectory`，`packages/rhttp/cargokit/gradle/plugin.gradle` 改为注入 `ExecOperations`。KGP 2.4 移除 `kotlinOptions`，`android/app/build.gradle` 改用 `kotlin.compilerOptions`。AGP 9 把 AAR metadata 检查变成硬失败而 `zip_flutter` 仍声明 compileSdk 33，根脚本在 `afterEvaluate` 把全部 Android 模块抬到 36（须在强制求值 `:app` 之前注册）。`packages/rhttp` 的 compileSdk 33 → 36。`flutter_inappwebview` 的 Android 模块仍用 `proguard-android.txt`（AGP 9 直接报错），pub.dev 最新 6.1.5 比现有 fork 更旧，故镜像到 `Arteiimis/flutter_inappwebview` 分支 `agp9-proguard`（49a0c88，只改这一处文件名）。`packages/flutter_saf`（AGP 8.1.0）与 `packages/rhttp`（AGP 7.3.0）buildscript 里钉的旧 AGP 与 9.3.1 同处 classpath，导致 lint 抛 `NoSuchMethodError: JavaDocParser.parseDataItem`，两处 buildscript 已删。CI Android job 的 JDK 17 → 21：AGP 9.3 的 lint 调用 `List.removeLast()`（Java 21+）。
 - 本机验证注意：KGP 2.4 的增量缓存要求源码与工程同盘（本机工程在 F:、`PUB_CACHE` 在 D: 时会抛 “different roots”），本地跑 Android 构建需让 `PUB_CACHE` 与工程同盘。
-- 状态：已完成；material_ui 迁移待办。
+- 状态：已完成；material_ui 迁移见批次 12。
 
 ## 批次 10 本地卡片占用统计与封面解码
 
@@ -174,3 +174,31 @@
 - 测试：新增 `test/local_size_cache_test.dart`（isolate 统计、持久化、TTL、写入失效、目录消失报错）、`test/local_cover_size_test.dart`（真实加载管线里拿到的目标尺寸）；`test/local_migration_test.dart` 加上一版库的迁移用例；`test/local_comics_page_test.dart` 断言占用等于真实目录总量、已写入数据库，并在重开页面后同步出现。
 - 上游碰撞点：`local.dart`（65 次上游提交；列、`fromRow`、`add()` 的 upsert 三处）、`local_comics_page.dart`（32 次）、`image_provider/base_image_provider.dart`、`image_provider/local_comic_image.dart`。合并时保留本实现：上游若把 `add()` 的 upsert 改回去，缓存不再失效，会显示过期的占用。
 - 状态：已完成。未跑 Windows 帧基线：`tool/test_performance_windows.ps1` 只测启动首帧和生成像素的列表滚动，不经过本地页和图片 provider。
+
+## 批次 11 本机测试基线（Windows 测试宿主）
+
+背景：`flutter test --exclude-tags environment` 在 Windows 本机长期有 17 个稳定失败，Linux CI 全绿，因此没人敢把它们当成回归信号。逐项追下来只有两类原因：测试写在 Windows 上不成立的假设，以及被测代码里 20 ms 轮询式的串行化。
+
+- `lib/foundation/appdata.dart`：`saveData`/`writeImplicitData` 的 `while (_isSavingData) await Future.delayed(20 ms)` 换成写串行链（`_writeChain`）。链式 future 在 `Zone.root` 内创建，并且第一次写入时惰性起头：否则在 widget 测试的 fake-async zone 里建出来的 future 会在该 zone 停止泵送后再也不完成，后续写入与 `flushSearchProgress` 一起卡死。`flushSearchProgress` 除了自己的保存，还等 `_pendingSave`，因此“后台已经在写、测试却开始删临时目录”的竞态消失（`test/search_history_test.dart` 的 errno 145）。
+- `lib/pages/webview.dart`：Windows 分支的判断从 `App.isWindows`（真实 `Platform.isWindows`）改为 `defaultTargetPlatform == TargetPlatform.windows`，与同函数里的 Android 分支一致；测试用 `debugDefaultTargetPlatformOverride` 就能在任意宿主上走这条分支（`test/webview_platform_test.dart` 12 例）。
+- `test/webview_platform_test.dart`：fake `InAppWebViewPlatform` 补 `createPlatformWebViewEnvironmentStatic`（`WebViewEnvironment.create` 走的是 static 工厂，不是带 params 的那个），并给 `App.dataPath` 指向临时目录——Windows 分支会拿它拼 WebView2 用户数据目录。
+- `test/reader_scrubbing_test.dart`：页面 PNG 换成引擎真能解码的 1×1 PNG。原来的 base64 只有 GDI+ 能解，Flutter 解码报 `Codec failed to produce an image`，于是图片读取永远停在“文件句柄还开着”的状态，Windows 删临时目录报 errno 32。
+- `test/reader_image_reload_test.dart`：去掉 `@Tags(['environment'])`。三处修正——`HttpOverrides.global = null`（flutter_test 默认把所有请求变成 400，环回服务器根本收不到）、`AppDio.adapterOverride`（rhttp 原生库在测试进程里加载不了，见下条）、teardown 先 `CacheManager().close()` 再删目录（`close()` 会等排队中的缓存操作，所以要边等边 pump）。
+- `lib/network/app_dio.dart`：新增 `@visibleForTesting static HttpClientAdapter Function()? adapterOverride`，构造时优先用它而不是硬编码的 `RHttpAdapter()`；测试注入 `IOHttpClientAdapter`。
+- 新增 `test/support/temp_dir.dart`：`deleteTempDirectory(tester, dir)` 与 `deleteEventually(dir)`，对 errno 32/145 重试最多 10 次（每次跑真实时间再 pump），`test/home_layout_test.dart`、`test/favorites_batch_move_test.dart`、`test/reader_scrubbing_test.dart`、`test/reader_image_reload_test.dart` 改用它。
+- 上游碰撞点：`appdata.dart` 95 次提交、`webview.dart`、`app_dio.dart` 都是上游常改文件；合并时本仓库的串行写链与 `adapterOverride` 优先。
+- 测试：`fvm flutter test --exclude-tags environment` 在本机 Windows 上 380 通过、20 跳过、0 失败（此前 366/20/17）。
+- 状态：已完成。
+
+## 批次 12 Flutter 3.50 弃用清理（material_ui / onReorderItem）
+
+背景：批次 9 把分析门禁放宽成 `--no-fatal-infos`，因为 3.50 把设计库拆成 pub 包后 `package:flutter/material.dart` 整体被标废弃（98 个文件），另有 `ReorderableListView.onReorder`（6 处）与两个本地化委托。项目已决定与上游解耦，这里把三类 info 全部清掉，门禁收回原样。
+
+- 依赖迁移：新增 `material_ui: ^1.11.1`；`flex_seed_scheme` 4.0.1 → 5.0.1、`dynamic_color` 1.8.1 → 2.1.0（两者都改为依赖 material_ui，`SeedColorScheme.fromSeeds` 与 `DynamicColorBuilder` 因此直接返回 material_ui 的 `ColorScheme`，主色方案不用手写桥接）。`dart fix --apply --code=migrate_design_widgets` 重写 98 个文件的 import。
+- `lib/main.dart`：`localizationsDelegates` 改用 material_ui 的 `GlobalMaterialLocalizations.delegates`（它已包含 cupertino/widgets 两个委托），并去掉 `flutter_localizations` 的 import——两个包各有一份同名类会冲突。`MaterialApp.builder` 最外层加 `MaterialUiCompatibilityBridge`，把 material_ui 的 `ThemeData` 映射成 `flutter/material.dart` 侧的 legacy `Theme`，给还没迁移的依赖（photo_view、mobile_scanner、flutter_inappwebview 等）用；该类自身带 `@Deprecated`（官方定位是过渡工具），所以那一行加了 `// ignore: deprecated_member_use` 并写了原因。依赖都迁移后整块删掉。
+- `onReorder` → `onReorderItem`：`comic_source_page.dart`（源列表、源库列表）、`favorites/favorite_actions.dart`、`local_comics_page.dart`、`settings/home_layout_page.dart`。新回调的 `newIndex` 已按“移除后”调整，故原有的 `if (newIndex > oldIndex) newIndex--;` 一律删除，否则会多减一位；`test/home_layout_test.dart` 直接调回调模拟拖拽，断言不变、参数改为 `(0, 2)`。
+- `lib/foundation/app_update.dart`：`_deletePartial` 重试删除 `.part` 文件（最多 1 秒）并吞掉失败。取消下载时 dio 的 sink 还握着句柄，Windows 删文件报 errno 5，原来会在 `finally` 里盖掉真正的 `DioException`，也导致 `test/app_update_test.dart` 并发跑时偶发失败。
+- `.github/workflows/release.yml`：`flutter analyze --no-fatal-infos` 改回 `flutter analyze`。
+- 上游碰撞点：98 个文件的 import 行、`main.dart`、四个重排页面。上游仍在 3.41.4 且全量 import `flutter/material.dart`，合并时 import 一律以本仓库为准。
+- 测试：`fvm flutter analyze` 无任何 issue；`fvm flutter test --exclude-tags environment` 本机 380 通过、20 跳过、0 失败。
+- 状态：已完成。

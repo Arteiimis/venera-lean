@@ -6,6 +6,8 @@ import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/favorites.dart';
 
+import 'support/temp_dir.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -59,6 +61,6 @@ void main() {
     manager.close();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathProviderChannel, null);
-    await directory.delete(recursive: true);
+    await deleteEventually(directory);
   });
 }

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:venera/components/components.dart';
@@ -610,8 +610,7 @@ class _BodyState extends State<_Body> {
             height: 420,
             child: ReorderableListView.builder(
               itemCount: keys.length,
-              onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex--;
+              onReorderItem: (oldIndex, newIndex) {
                 setState(() {
                   final key = keys.removeAt(oldIndex);
                   keys.insert(newIndex, key);
@@ -1092,8 +1091,7 @@ class _SourceLibrariesPageState extends State<SourceLibrariesPage> {
           : ReorderableListView.builder(
               padding: const EdgeInsets.all(12),
               itemCount: items.length,
-              onReorder: (oldIndex, newIndex) {
-                if (newIndex > oldIndex) newIndex--;
+              onReorderItem: (oldIndex, newIndex) {
                 ComicSourceLibraryManager.reorder(oldIndex, newIndex);
                 setState(() {});
               },

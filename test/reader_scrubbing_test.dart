@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/components/custom_slider.dart';
@@ -13,6 +13,8 @@ import 'package:venera/foundation/history.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/pages/reader/reader.dart';
 import 'package:venera/utils/translations.dart';
+
+import 'support/temp_dir.dart';
 
 void main() {
   testWidgets(
@@ -56,7 +58,7 @@ void main() {
           ..createSync(recursive: true);
         File('${root.path}/local_path').writeAsStringSync('${root.path}/local');
         final bytes = base64Decode(
-          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==',
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==',
         );
         for (var i = 1; i <= 30; i++) {
           File('${dir.path}/$i.png').writeAsBytesSync(bytes);
@@ -155,7 +157,9 @@ void main() {
       local.close();
       LocalFavoritesManager().close();
       HistoryManager().close();
-      await tester.runAsync(() => root.delete(recursive: true));
+      // Page reads started under the fake clock still hold their files open
+      // until real time runs; deleteTempDirectory pumps until they close.
+      await deleteTempDirectory(tester, root);
     },
   );
 }

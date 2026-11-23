@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:venera/components/components.dart';
 import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/home_layout.dart';
@@ -109,8 +109,7 @@ class _HomeLayoutPageState extends State<HomeLayoutPage> {
           child: ReorderableListView.builder(
             buildDefaultDragHandles: false,
             itemCount: layout.order.length,
-            onReorder: (oldIndex, newIndex) {
-              if (newIndex > oldIndex) newIndex--;
+            onReorderItem: (oldIndex, newIndex) {
               layout.order.insert(newIndex, layout.order.removeAt(oldIndex));
               _save(layout);
             },

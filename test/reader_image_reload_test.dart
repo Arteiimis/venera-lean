@@ -1,16 +1,17 @@
-@Tags(['environment'])
-library;
-
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:dio/io.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/cache_manager.dart';
 import 'package:venera/foundation/image_provider/reader_image.dart';
+import 'package:venera/network/app_dio.dart';
 import 'package:venera/network/images.dart';
 import 'package:venera/pages/reader/reader.dart';
+
+import 'support/temp_dir.dart';
 
 void main() {
   testWidgets('reload of a resized reader image replaces its disk cache', (
@@ -20,6 +21,9 @@ void main() {
     late HttpServer server;
     var requests = 0;
     var ready = 0;
+    // flutter_test replaces HttpClient with a stub that answers 400 and never
+    // reaches the network; this test needs the real loopback server.
+    HttpOverrides.global = null;
     final png = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
     );
@@ -30,6 +34,9 @@ void main() {
       App.dataPath = root.path;
       App.cachePath = root.path;
       CacheManager.instance = null;
+      // The native rhttp library is not loadable inside flutter test; the
+      // reload under test only needs any HTTP transport.
+      AppDio.adapterOverride = () => IOHttpClientAdapter();
       appdata.settings['proxy'] = 'direct';
       appdata.settings['enableCustomImageProcessing'] = false;
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -95,9 +102,22 @@ void main() {
       await tester.runAsync(() async {
         ImageDownloader.cancelAllLoadingImages();
         await server.close(force: true);
-        CacheManager.instance = null;
-        await root.delete(recursive: true);
       });
+      // cache.db stays open otherwise, and Windows then refuses the delete.
+      // close() waits for queued cache work, which resumes on this test's
+      // fake clock, so pump real time until it completes.
+      var closed = false;
+      CacheManager.instance?.close().whenComplete(() => closed = true);
+      for (var i = 0; i < 20 && !closed; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(closed, isTrue, reason: 'CacheManager.close() did not finish');
+      CacheManager.instance = null;
+      AppDio.adapterOverride = null;
+      await deleteTempDirectory(tester, root);
     }
   });
 }

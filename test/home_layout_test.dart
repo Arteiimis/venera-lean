@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/foundation/app.dart';
@@ -10,6 +10,8 @@ import 'package:venera/foundation/appdata.dart';
 import 'package:venera/foundation/home_layout.dart';
 import 'package:venera/pages/settings/home_layout_page.dart';
 import 'package:venera/utils/translations.dart';
+
+import 'support/temp_dir.dart';
 
 void main() {
   test(
@@ -105,7 +107,9 @@ void main() {
         find.byType(ReorderableListView),
       );
       await tester.runAsync(() async {
-        list.onReorder!(0, 3);
+        // onReorderItem already accounts for the removed item, so this moves
+        // the first module to index 2 without the old manual fixup.
+        list.onReorderItem!(0, 2);
         await appdata.saveData(false);
       });
       await tester.pumpAndSettle();
@@ -157,7 +161,7 @@ void main() {
       appdata.restoreMemorySnapshot(snapshot);
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
-      await tester.runAsync(() => root.delete(recursive: true));
+      await deleteTempDirectory(tester, root);
     }
   });
 }

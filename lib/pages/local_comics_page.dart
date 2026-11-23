@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:venera/components/components.dart';
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/appdata.dart';
@@ -198,8 +198,7 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
             height: 400,
             child: ReorderableListView.builder(
               itemCount: entries.length,
-              onReorder: (oldIndex, newIndex) => refresh(() {
-                if (newIndex > oldIndex) newIndex--;
+              onReorderItem: (oldIndex, newIndex) => refresh(() {
                 entries.insert(newIndex, entries.removeAt(oldIndex));
               }),
               itemBuilder: (context, index) => ListTile(

@@ -1,6 +1,6 @@
 // Manual native crash probe; build/install an independent APK, never the user's app.
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 import '../test/support/rhttp_callback_cases.dart';
 

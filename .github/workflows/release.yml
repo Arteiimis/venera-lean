@@ -29,10 +29,7 @@ jobs:
       - name: Dependencies
         run: flutter pub get
       - name: Analyze
-        # Flutter 3.50 deprecates package:flutter/material.dart in favour of
-        # package:material_ui/material_ui.dart across ~100 files. Keep those
-        # infos visible without failing the gate until that migration lands.
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze
       - name: Test
         run: flutter test --exclude-tags environment
       - name: Validate version metadata

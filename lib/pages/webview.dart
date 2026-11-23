@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:desktop_webview_window/desktop_webview_window.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -115,7 +115,9 @@ class _AppWebviewState extends State<AppWebview> {
         }
       }
     }
-    if (!App.isWindows) {
+    // Follow the target platform, like the Android check above, so tests can
+    // exercise this branch on any host.
+    if (defaultTargetPlatform != TargetPlatform.windows) {
       return true;
     }
     AppWebview.webViewEnvironment = await WebViewEnvironment.create(

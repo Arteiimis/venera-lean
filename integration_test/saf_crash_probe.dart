@@ -1,7 +1,7 @@
 // Manual, isolated Android crash probe. See doc/issue43-saf-regression-2026-11-06.md.
 import 'dart:io';
 import 'dart:isolate';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_saf/flutter_saf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:venera/utils/io.dart' show overrideIO;

@@ -232,6 +232,15 @@ class LocalFavoritesManager with ChangeNotifier {
 
   var _hashedIds = <String, int>{};
 
+  /// True once [_hashedIds] was read from every folder; until then [isExist]
+  /// has to fall back to the database.
+  bool _hashedIdsReady = false;
+
+  /// Folder names sorted by their stored order. Rebuilding this re-reads the
+  /// schema (`sqlite_master`) and one `folder_order` row per folder, which used
+  /// to happen once per tile build through [isExist].
+  List<String>? _folderNamesCache;
+
   static String _identityKey(String id, int type) => '$type\u0000$id';
 
   int get totalComics {
@@ -253,6 +262,8 @@ class LocalFavoritesManager with ChangeNotifier {
       isInitialized = false;
       counts = {};
       _hashedIds = {};
+      _hashedIdsReady = false;
+      _folderNamesCache = null;
       try {
         _db.dispose();
       } catch (_) {}
@@ -262,6 +273,8 @@ class LocalFavoritesManager with ChangeNotifier {
 
   Future<void> _initInternal() async {
     counts = {};
+    _hashedIdsReady = false;
+    _folderNamesCache = null;
     _db = openAppDatabase("${App.dataPath}/local_favorite.db");
     _db.execute("""
       create table if not exists folder_order (
@@ -314,6 +327,7 @@ class LocalFavoritesManager with ChangeNotifier {
       folderNames,
       "${App.dataPath}/local_favorite.db",
     );
+    _hashedIdsReady = true;
     notifyListeners();
   }
 
@@ -321,6 +335,7 @@ class LocalFavoritesManager with ChangeNotifier {
     _initHashedIds(folderNames, "${App.dataPath}/local_favorite.db").then(
       (value) {
         _hashedIds = value;
+        _hashedIdsReady = true;
         notifyListeners();
       },
       onError: (Object error, StackTrace stack) {
@@ -464,6 +479,7 @@ class LocalFavoritesManager with ChangeNotifier {
         [folders[i], i],
       );
     }
+    _folderNamesCache = null;
     notifyListeners();
   }
 
@@ -475,7 +491,7 @@ class LocalFavoritesManager with ChangeNotifier {
     """).first["c"];
   }
 
-  List<String> get folderNames => _getFolderNamesWithDB();
+  List<String> get folderNames => _folderNamesCache ??= _getFolderNamesWithDB();
 
   int maxValue(String folder) {
     final table = _favoriteTable(folder);
@@ -644,8 +660,10 @@ class LocalFavoritesManager with ChangeNotifier {
         primary key (id, type)
       );
     """);
-    notifyListeners();
     counts[name] = 0;
+    // Invalidate before notifying: listeners read folderNames synchronously.
+    _folderNamesCache = null;
+    notifyListeners();
     return name;
   }
 
@@ -1033,6 +1051,8 @@ class LocalFavoritesManager with ChangeNotifier {
       [name],
     );
     counts.remove(name);
+    // Invalidate before the refresh: refreshHashedIds() reads folderNames.
+    _folderNamesCache = null;
     refreshHashedIds();
     notifyListeners();
   }
@@ -1198,6 +1218,7 @@ class LocalFavoritesManager with ChangeNotifier {
     }
     counts[after] = counts[before] ?? 0;
     counts.remove(before);
+    _folderNamesCache = null;
     notifyListeners();
   }
 
@@ -1344,6 +1365,11 @@ class LocalFavoritesManager with ChangeNotifier {
   }
 
   bool isExist(String id, ComicType type) {
+    if (_hashedIdsReady) {
+      // The identity index is maintained on every add/remove, so a tile build
+      // does not need to query the folder tables at all.
+      return _hashedIds.containsKey(_identityKey(id, type.value));
+    }
     for (final folder in folderNames) {
       final table = _favoriteTable(folder);
       if (_db.select(
@@ -1424,6 +1450,8 @@ class LocalFavoritesManager with ChangeNotifier {
     isInitialized = false;
     counts = {};
     _hashedIds = {};
+    _hashedIdsReady = false;
+    _folderNamesCache = null;
     _initializing = null;
   }
 

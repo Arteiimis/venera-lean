@@ -9,13 +9,15 @@ ImageProvider? _findImageProvider(Comic comic) {
   } else if (comic is ReadLaterComic && comic.type == ComicType.local) {
     final local = LocalManager().find(comic.id, ComicType.local);
     if (local == null) return null;
-    image = FileImage(local.coverFile);
+    // Local covers are tile-sized; the raw FileImage decoded them at the full
+    // source resolution (up to tens of megabytes per tile).
+    image = LocalComicImageProvider(local);
   } else if (comic.sourceKey == 'local') {
     var localComic = LocalManager().find(comic.id, ComicType.local);
     if (localComic == null) {
       return null;
     }
-    image = FileImage(localComic.coverFile);
+    image = LocalComicImageProvider(localComic);
   } else {
     image = CachedImageProvider(
       comic.cover,
@@ -168,14 +170,13 @@ class ComicTile extends StatelessWidget {
             ComicType(comic.sourceKey.hashCode),
           )
         : false;
-    var history = appdata.settings['showHistoryStatusOnTile']
-        ? HistoryManager().find(comic.id, ComicType(comic.sourceKey.hashCode))
+    // Tile-sized summary instead of the full history row: the badge only needs
+    // page and maxPage, and this keeps the per-build work out of the database.
+    var historyBadge = appdata.settings['showHistoryStatusOnTile']
+        ? HistoryManager().badge(comic.id, ComicType(comic.sourceKey.hashCode))
         : null;
-    if (history?.page == 0) {
-      history!.page = 1;
-    }
 
-    if (!isFavorite && history == null) {
+    if (!isFavorite && historyBadge == null) {
       return child;
     }
 
@@ -202,7 +203,7 @@ class ComicTile extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                if (history != null)
+                if (historyBadge != null)
                   Container(
                     height: 24,
                     color: Colors.blue.toOpacity(0.9),
@@ -210,8 +211,9 @@ class ComicTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: CustomPaint(
                       painter: _ReadingHistoryPainter(
-                        history.page,
-                        history.maxPage,
+                        // Legacy rows may still store page 0.
+                        historyBadge.page == 0 ? 1 : historyBadge.page,
+                        historyBadge.maxPage,
                       ),
                     ),
                   ),
@@ -607,6 +609,15 @@ class _ComicDescription extends StatelessWidget {
                   return Container();
                 }
                 int cnt = (constraints.maxHeight - 22).toInt() ~/ 25;
+                // The Wrap sits in a clipped box of exactly (cnt + 1) rows, but
+                // laying it out builds and measures every chip. Only build an
+                // upper bound for the rows that can be seen: a chip is never
+                // narrower than ~24 logical pixels including its margins.
+                final perRow = math.max(2, (constraints.maxWidth / 24).floor());
+                final maxChips = (cnt + 1) * perRow;
+                final tags = displayTags.length > maxChips
+                    ? displayTags.sublist(0, maxChips)
+                    : displayTags;
                 return Container(
                   clipBehavior: Clip.antiAlias,
                   height: 21 + cnt * 24,
@@ -619,7 +630,7 @@ class _ComicDescription extends StatelessWidget {
                     spacing: 4,
                     runSpacing: 3,
                     children: [
-                      for (var s in displayTags)
+                      for (var s in tags)
                         Container(
                           height: 21,
                           padding: const EdgeInsets.symmetric(horizontal: 4),

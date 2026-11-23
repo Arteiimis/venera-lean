@@ -22,6 +22,8 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
+    _reloadHistory();
+    comics = _filteredHistory();
     HistoryManager().addListener(onUpdate);
     super.initState();
   }
@@ -35,6 +37,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void onUpdate() {
     setState(() {
+      _reloadHistory();
       comics = _filteredHistory();
       if (multiSelectMode) {
         selectedComics.removeWhere((comic, _) => !comics.contains(comic));
@@ -62,15 +65,30 @@ class _HistoryPageState extends State<HistoryPage> {
         .first;
   }
 
-  var comics = HistoryManager().getAll();
+  /// Decoded history in displayed order, kept so typing only filters in memory.
+  /// Re-reading it is a full table sort plus a decode of every row.
+  List<History> _all = [];
+
+  /// Lowercased search text per entry of [_all], built once per list change.
+  List<String> _searchText = [];
+
+  var comics = <History>[];
   var controller = FlyoutController();
   final searchController = SearchBarController();
   String query = '';
 
-  List<History> _filteredHistory() => HistoryManager()
-      .getAll()
-      .where((comic) => comic.matchesQuery(query))
-      .toList();
+  void _reloadHistory() {
+    _all = HistoryManager().getAll();
+    _searchText = [for (final comic in _all) comic.searchableText];
+  }
+
+  List<History> _filteredHistory() {
+    final words = query.trim().toLowerCase().split(RegExp(r'\s+'));
+    return [
+      for (var i = 0; i < _all.length; i++)
+        if (words.every(_searchText[i].contains)) _all[i],
+    ];
+  }
 
   void _search(String value) {
     setState(() {

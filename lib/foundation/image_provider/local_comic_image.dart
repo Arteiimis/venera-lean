@@ -16,41 +16,60 @@ class LocalComicImageProvider
   final LocalComic comic;
 
   /// Covers only render at tile size (a few hundred physical pixels), so they
-  /// decode within a million pixels instead of whole: a 2400x3400 cover.jpg
+  /// decode within a small budget instead of whole: a 2400x3400 cover.jpg
   /// otherwise becomes a 32 MB texture that also crowds the image cache.
   @override
   bool get enableResize => true;
 
   @override
-  int get maxDecodedPixel => 800 * 1200;
+  int get maxDecodedPixel => BaseImageProvider.tileCoverPixelBudget;
+
+  /// A cover is cropped by BoxFit.cover in its tile, so an extreme aspect ratio
+  /// is no reason to skip the budget: one 4000x1000 cover would keep 16 MB.
+  @override
+  bool get resizeExtremeRatios => true;
 
   @override
   Future<Uint8List> load(chunkEvents, checkStop) async {
     File? file = comic.coverFile;
-    if(! await file.exists()) {
+    if (!await file.exists()) {
       file = null;
       // Stored comic directories are relative to the configured local root.
       var dir = Directory(comic.baseDir);
-      if (! await dir.exists()) {
+      if (!await dir.exists()) {
         throw "Error: Comic not found.";
       }
       Directory? firstDir;
       await for (var entity in dir.list()) {
-        if(entity is File) {
-          if(["jpg", "jpeg", "png", "webp", "gif", "jpe", "avif"]
-              .contains(entity.extension.toLowerCase())) {
+        if (entity is File) {
+          if ([
+            "jpg",
+            "jpeg",
+            "png",
+            "webp",
+            "gif",
+            "jpe",
+            "avif",
+          ].contains(entity.extension.toLowerCase())) {
             file = entity;
             break;
           }
-        } else if(entity is Directory) {
+        } else if (entity is Directory) {
           firstDir ??= entity;
         }
       }
-      if(file == null && firstDir != null) {
+      if (file == null && firstDir != null) {
         await for (var entity in firstDir.list()) {
-          if(entity is File) {
-            if(["jpg", "jpeg", "png", "webp", "gif", "jpe", "avif"]
-                .contains(entity.extension.toLowerCase())) {
+          if (entity is File) {
+            if ([
+              "jpg",
+              "jpeg",
+              "png",
+              "webp",
+              "gif",
+              "jpe",
+              "avif",
+            ].contains(entity.extension.toLowerCase())) {
               file = entity;
               break;
             }
@@ -58,12 +77,12 @@ class LocalComicImageProvider
         }
       }
     }
-    if(file == null) {
+    if (file == null) {
       throw "Error: Cover not found.";
     }
     checkStop();
     var data = await file.readAsBytes();
-    if(data.isEmpty) {
+    if (data.isEmpty) {
       throw "Exception: Empty file(${file.path}).";
     }
     return data;

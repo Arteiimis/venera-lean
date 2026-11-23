@@ -15,9 +15,24 @@ abstract class BaseImageProvider<T extends BaseImageProvider<T>>
 
   static const int maxImagePixel = 2560 * 1440;
 
+  /// Pixel budget for covers rendered in a grid tile.
+  ///
+  /// A detailed tile shows its cover at about 92x136 logical pixels and a brief
+  /// tile at up to 192x300, so 400x600 physical pixels still covers both at a
+  /// device pixel ratio of 2. At the previous 800x1200 budget one screen of 36
+  /// covers decoded to 118 MiB, more than the whole 100 MiB image cache, so
+  /// every visit re-decoded every cover; at 400x600 the same screen is ~35 MiB.
+  static const int tileCoverPixelBudget = 400 * 600;
+
   /// Pixel budget for one decoded image; anything larger is scaled down while
   /// decoding. Providers that only ever render small override it.
   int get maxDecodedPixel => maxImagePixel;
+
+  /// Whether images with an extreme aspect ratio are scaled down by the budget
+  /// as well. Reader pages keep long strips at full resolution so they stay
+  /// sharp across the viewport, but a cover is only ever shown as a small tile,
+  /// so a banner- or strip-shaped cover must still respect the budget.
+  bool get resizeExtremeRatios => false;
 
   TargetImageSize _getTargetSize(int width, int height) {
     // ignore invalid size
@@ -26,7 +41,7 @@ abstract class BaseImageProvider<T extends BaseImageProvider<T>>
     }
     // ignore too wide or too tall image
     final imageRatio = width / height;
-    if (imageRatio > 2 || imageRatio < 0.5) {
+    if (!resizeExtremeRatios && (imageRatio > 2 || imageRatio < 0.5)) {
       return TargetImageSize(width: width, height: height);
     }
     // resize if too large

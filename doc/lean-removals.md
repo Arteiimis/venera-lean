@@ -214,3 +214,24 @@
 - 移除条件：升级到包含 #196897（或上游正式发布的 3.50.2+）后，删除这两个文件、`main.cpp` 中的调用与 `CMakeLists.txt` 里的源文件条目。上游修复做的事与本补丁相同，重复启用无副作用，只是多余。
 - 上游碰撞点：`windows/runner/main.cpp` 已有本仓库自己的改动（关闭 Impeller），合并上游时保留两处。
 - 状态：已完成；待 Flutter 升级后移除。
+
+## 批次 14 卡片徽标、封面预算与历史查询的 UI 线程开销
+
+背景：批次 10 之后，本地页「点进去还是卡一下」。用本机数据的副本实测（188 本本地漫画 / 3910 条历史 / 2 个收藏夹 / 窗口 1623×977 / 详细模式）：首屏 36 张封面按 800×1200 预算解码共 **118.0 MiB**，而阅读器之外的图片缓存上限是 100 MiB（`reader.dart` 的 `dispose` 把 `maximumSizeBytes` 复位成 `100 << 20`），缓存永远处于超限淘汰状态，每次进入都要重新读盘 23.9 MiB、解码 79 MP（单线程 972 ms）、上传 118 MiB 纹理。`getComics` 整库查询 + 行解码只有 1.2 ms，不是瓶颈。同一批数据还量到：每张卡片的 `build()` 里 `isExist` 0.15 ms（其中 0.11 ms 是 `folderNames` 每次重扫 `sqlite_master` + 每个夹一条 `folder_order`）+ `HistoryManager.find` 0.05 ms；历史页每敲一个键都 `getAll()`（9.4 ms 查询 + 11.1 ms 含解码）再对全表 `matchesQuery`（14.6 ms）；`getRecent()` 因 `time` 无索引每次排序全表 3.8 ms。
+
+- 封面（`lib/foundation/image_provider/`）：
+  - `base_image_provider.dart`：新增 `tileCoverPixelBudget = 400 * 600` 与 `resizeExtremeRatios`（默认 `false`，阅读器的长条页保持原行为）。同一批封面实测曲线：800×1200 → 118.0 MiB、400×600 → 36.6 MiB、360×540 → 31.1 MiB、240×360 → 17.6 MiB；取 400×600 是为了让简要模式在 DPR 2 下仍是 1:1。
+  - `local_comic_image.dart`：预算 800×1200 → `tileCoverPixelBudget`，并打开 `resizeExtremeRatios`（宽高比 >2 或 <0.5 的封面此前完全不缩放，整库 10 张合计 40 MiB）。
+  - `history_image_provider.dart`：打开 `enableResize` 并套同一预算。本地漫画的历史封面走 `load()` 里的 `coverFile.readAsBytes()`，此前按原图解码（首屏历史条那张实测 9 MiB）。
+  - `lib/components/comic.dart` `_findImageProvider`：本地 `sourceKey` 与稍后读的本地项从 `FileImage` 改为 `LocalComicImageProvider`（与原图同内容，但与本地页网格共用缓存键）。
+  - 不动的路径：`CachedImageProvider` 仍不缩放，因为详情页的 `_CoverViewer` 用同一个 provider 全屏显示封面；本地详情页封面也因此保持原样。
+- 徽标与搜索（`lib/components/comic.dart`、`lib/foundation/favorites.dart`、`lib/foundation/history.dart`）：
+  - `isExist` 改走已有的 `_hashedIds` 身份索引（`_hashedIdsReady` 之前仍回退数据库）；`folderNames` 加缓存，`createFolder`/`rename`/`deleteFolder`/`updateOrder`/`init`/`close` 失效（`createFolder` 必须先失效再 notify，监听者会同步读它）。
+  - 新增 `HistoryBadge` 与 `HistoryManager.badge()`：只 `select page, max_page`，LRU 上限 512，`addHistory` 就地更新、`updateCache`/`close` 清空。`ComicTile` 的徽标改用它，不再为每张可见卡片解码整行（`readEpisode` 等）。
+  - `_ComicDescription` 的标签胶囊按可见行数截断：`perRow = maxWidth / 24`，`maxChips = (cnt + 1) * perRow`。Wrap 位于固定高度且被裁剪，但此前会构建并排版全部标签（本机首屏 594 个，中位 13/本、最多 48/本）。
+- 历史（`lib/foundation/history.dart`、`lib/pages/history_page.dart`）：
+  - `_initInternal` 创建 `CREATE INDEX IF NOT EXISTS history_time ON history(time)`（本机 `getRecent()` 3.8 ms → 0.08 ms，无索引时每次全表排序）。
+  - `History.searchableText` 把 `matchesQuery` 的拼接/小写提取出来；历史页在列表变化时 `getAll()` 一次并预计算该文本，按键只做内存过滤（本机每键约 25 ms → 亚毫秒）。
+- 测试：`test/local_cover_size_test.dart` 改用预算常量并新增「极端宽高比也缩放」断言；新增 `test/history_badge_test.dart`（徽标读取/更新/删除、`history_time` 索引存在）；`fvm flutter analyze` 无 issue；`fvm flutter test --exclude-tags environment` 本机 386 通过、20 跳过、0 失败（HEAD 为 384，新增两例）。
+- 上游碰撞点：`components/comic.dart`、`favorites.dart`（上游 40 次提交）、`history.dart`（29 次）、`history_page.dart`、`image_provider/*`。合并时保留本实现：上游若改回 `_getTargetSize` 的宽高比早退，封面会重新按原尺寸解码；若把 `folderNames` 改回每次查询，`isExist` 的缓存仍能工作，只是失去夹名缓存。
+- 状态：已完成。未跑 Windows 帧基线（它只测启动首帧与生成像素的列表滚动，不经过本地页与图片 provider）。

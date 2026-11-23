@@ -20,6 +20,18 @@ class HistoryImageProvider
 
   final String _key;
 
+  /// History covers are only shown in tiles. Local comics reach this provider
+  /// through the local file path in [load], which used to decode at the full
+  /// source resolution regardless of the tile size.
+  @override
+  bool get enableResize => true;
+
+  @override
+  int get maxDecodedPixel => BaseImageProvider.tileCoverPixelBudget;
+
+  @override
+  bool get resizeExtremeRatios => true;
+
   // Refreshing every visible history item on every rebuild would create a
   // burst of source requests. Keep a process-local refresh timestamp instead.
   static final _sourceRefreshAt = <String, DateTime>{};

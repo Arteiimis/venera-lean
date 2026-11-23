@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:venera/foundation/comic_type.dart';
+import 'package:venera/foundation/image_provider/base_image_provider.dart';
 import 'package:venera/foundation/image_provider/local_comic_image.dart';
 import 'package:venera/foundation/local.dart';
 
@@ -76,9 +77,22 @@ void main() {
     final requested = await _requestedTargetSize(provider);
     expect(requested, isNotNull);
     final huge = requested!(2400, 3400);
-    expect(huge.width! * huge.height!, lessThanOrEqualTo(800 * 1200));
+    expect(
+      huge.width! * huge.height!,
+      // Rounding to whole pixels can exceed the budget by a few pixels.
+      lessThanOrEqualTo(BaseImageProvider.tileCoverPixelBudget * 1.01),
+    );
     expect(huge.width! / huge.height!, closeTo(2400 / 3400, 0.01));
     final small = requested(100, 150);
     expect((small.width, small.height), (100, 150));
+    // A banner-shaped cover is cropped by the tile, so it must respect the
+    // budget as well instead of decoding at its full source size.
+    final banner = requested(4000, 1000);
+    expect(
+      banner.width! * banner.height!,
+      // Rounding to whole pixels can exceed the budget by a few pixels.
+      lessThanOrEqualTo(BaseImageProvider.tileCoverPixelBudget * 1.01),
+    );
+    expect(banner.width! / banner.height!, closeTo(4, 0.01));
   });
 }

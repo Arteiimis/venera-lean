@@ -15,6 +15,15 @@ class LocalComicImageProvider
 
   final LocalComic comic;
 
+  /// Covers only render at tile size (a few hundred physical pixels), so they
+  /// decode within a million pixels instead of whole: a 2400x3400 cover.jpg
+  /// otherwise becomes a 32 MB texture that also crowds the image cache.
+  @override
+  bool get enableResize => true;
+
+  @override
+  int get maxDecodedPixel => 800 * 1200;
+
   @override
   Future<Uint8List> load(chunkEvents, checkStop) async {
     File? file = comic.coverFile;

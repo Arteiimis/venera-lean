@@ -221,6 +221,41 @@ Future<void> copyDirectoryIsolate(
   await Isolate.run(() => overrideIO(() => copyDirectory(source, destination)));
 }
 
+/// Total size in bytes of every regular file under [directory], measured on a
+/// worker isolate. The synchronous walk keeps the UI isolate free: the async
+/// `Directory.list` + `File.length` pair costs one IO service round trip per
+/// file on the calling isolate, which is noticeable for libraries with tens of
+/// thousands of pages. Links are not followed, matching the previous count.
+Future<int> directorySizeIsolate(String directory) =>
+    Isolate.run(() => _directorySizeSync(directory));
+
+int _directorySizeSync(String directory) {
+  var bytes = 0;
+  // The root is listed unguarded so that a missing comic reports an error
+  // instead of a plausible zero.
+  final pending = <List<FileSystemEntity>>[
+    Directory(directory).listSync(followLinks: false),
+  ];
+  while (pending.isNotEmpty) {
+    for (final entity in pending.removeLast()) {
+      if (entity is Directory) {
+        try {
+          pending.add(entity.listSync(followLinks: false));
+        } on FileSystemException {
+          // An unreadable subdirectory must not void the whole total.
+        }
+      } else if (entity is File) {
+        try {
+          bytes += entity.lengthSync();
+        } on FileSystemException {
+          // Vanished or locked since the listing; skip it.
+        }
+      }
+    }
+  }
+  return bytes;
+}
+
 String findValidDirectoryName(String path, String directory) {
   var name = sanitizeFileName(directory);
   var dir = Directory("$path/$name");

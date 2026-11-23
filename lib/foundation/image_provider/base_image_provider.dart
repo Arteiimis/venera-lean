@@ -15,7 +15,11 @@ abstract class BaseImageProvider<T extends BaseImageProvider<T>>
 
   static const int maxImagePixel = 2560 * 1440;
 
-  static TargetImageSize _getTargetSize(int width, int height) {
+  /// Pixel budget for one decoded image; anything larger is scaled down while
+  /// decoding. Providers that only ever render small override it.
+  int get maxDecodedPixel => maxImagePixel;
+
+  TargetImageSize _getTargetSize(int width, int height) {
     // ignore invalid size
     if (width <= 0 || height <= 0) {
       return TargetImageSize(width: width, height: height);
@@ -26,8 +30,9 @@ abstract class BaseImageProvider<T extends BaseImageProvider<T>>
       return TargetImageSize(width: width, height: height);
     }
     // resize if too large
-    if (width * height > maxImagePixel) {
-      final ratio = sqrt(maxImagePixel / (width * height));
+    final limit = maxDecodedPixel;
+    if (width * height > limit) {
+      final ratio = sqrt(limit / (width * height));
       return TargetImageSize(
         width: (width * ratio).round(),
         height: (height * ratio).round(),

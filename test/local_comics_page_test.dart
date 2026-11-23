@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +9,7 @@ import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/local.dart';
 import 'package:venera/pages/local_comics_page.dart';
 import 'package:venera/pages/reader/reader.dart';
+import 'package:venera/utils/io.dart';
 import 'support/reader_fixture.dart' as fixture;
 
 void main() {
@@ -60,6 +60,15 @@ void main() {
         ),
         findsOneWidget,
       );
+      // The footer is measured on a worker isolate and then stored, so the
+      // number is the real directory total and survives reopening the page.
+      final expectedBytes = Directory(comic.baseDir)
+          .listSync(recursive: true)
+          .whereType<File>()
+          .fold<int>(0, (sum, file) => sum + file.lengthSync());
+      final expected = 'Local · ${bytesToReadableString(expectedBytes)}';
+      expect(find.text(expected), findsOneWidget);
+      expect(local.find(comic.id, ComicType.local)!.sizeBytes, expectedBytes);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byType(MenuButton).first);
@@ -113,6 +122,8 @@ void main() {
       await fixture.settle(tester);
       await tester.tap(find.text('Offline'));
       await fixture.settle(tester);
+      // Reopened: the stored size renders at once, with nothing to measure.
+      expect(find.text(expected), findsOneWidget);
       await tester.tap(find.text('Reader fixture'), buttons: kSecondaryButton);
       await tester.pumpAndSettle();
       expect(find.text('Details'), findsOneWidget);

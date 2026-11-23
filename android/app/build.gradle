@@ -38,7 +38,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "io.github.arteiimis.venera"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion "28.0.13004108"
+    ndkVersion = flutter.ndkVersion
 
     packaging {
         jniLibs {
@@ -58,9 +58,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions{
-        jvmTarget = JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -138,6 +135,12 @@ android {
         includeInApk = false
         // Disables dependency metadata when building Android App Bundles.
         includeInBundle = false
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

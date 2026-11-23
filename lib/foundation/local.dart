@@ -65,6 +65,13 @@ class LocalComic with HistoryMixin implements Comic {
   /// Whether deleting this record is allowed to remove its files.
   final bool managedByApp;
 
+  /// Disk usage of the comic directory in bytes, or null until it has been
+  /// measured since the library last changed.
+  final int? sizeBytes;
+
+  /// When [sizeBytes] was measured; older values are re-measured when shown.
+  final DateTime? sizeCheckedAt;
+
   const LocalComic({
     required this.id,
     required this.title,
@@ -78,6 +85,8 @@ class LocalComic with HistoryMixin implements Comic {
     required this.downloadedChapters,
     required this.createdAt,
     this.managedByApp = true,
+    this.sizeBytes,
+    this.sizeCheckedAt,
   });
 
   LocalComic.fromRow(Row row)
@@ -96,7 +105,11 @@ class LocalComic with HistoryMixin implements Comic {
         jsonDecode(row['downloadedChapters'] as String),
       ),
       createdAt = DateTime.fromMillisecondsSinceEpoch(row['created_at'] as int),
-      managedByApp = (row['managed_by_app'] as int? ?? 1) != 0;
+      managedByApp = (row['managed_by_app'] as int? ?? 1) != 0,
+      sizeBytes = row['size_bytes'] as int?,
+      sizeCheckedAt = row['size_checked_at'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(row['size_checked_at'] as int);
 
   File get coverFile => File(FilePath.join(baseDir, cover));
 
@@ -400,6 +413,8 @@ class LocalManager with ChangeNotifier {
           downloadedChapters TEXT NOT NULL,
           created_at INTEGER,
           managed_by_app INTEGER NOT NULL DEFAULT 1,
+          size_bytes INTEGER,
+          size_checked_at INTEGER,
           PRIMARY KEY (id, comic_type)
       );
     ''');
@@ -425,6 +440,7 @@ class LocalManager with ChangeNotifier {
           cover TEXT NOT NULL, comic_type INTEGER NOT NULL,
           downloadedChapters TEXT NOT NULL, created_at INTEGER,
           managed_by_app INTEGER NOT NULL DEFAULT 1,
+          size_bytes INTEGER, size_checked_at INTEGER,
           PRIMARY KEY (id, comic_type)
         );
       ''');
@@ -440,6 +456,13 @@ class LocalManager with ChangeNotifier {
       _db.execute(
         'ALTER TABLE comics ADD COLUMN managed_by_app INTEGER NOT NULL DEFAULT 1;',
       );
+    }
+    // Measured disk usage: null until measured, reset by every write.
+    if (!columns.any((row) => row['name'] == 'size_bytes')) {
+      _db.execute('ALTER TABLE comics ADD COLUMN size_bytes INTEGER;');
+    }
+    if (!columns.any((row) => row['name'] == 'size_checked_at')) {
+      _db.execute('ALTER TABLE comics ADD COLUMN size_checked_at INTEGER;');
     }
     if (File(FilePath.join(App.dataPath, 'local_path')).existsSync()) {
       final pathFile = File(FilePath.join(App.dataPath, 'local_path'));
@@ -492,6 +515,8 @@ class LocalManager with ChangeNotifier {
     if (old != null) {
       downloaded.addAll(old.downloadedChapters);
     }
+    // Any write may change the files on disk, so the measured size is no
+    // longer known; the next view of the comic measures it again.
     _db.execute(
       '''INSERT INTO comics
          (id, title, subtitle, description, tags, directory, chapters, cover,
@@ -502,7 +527,8 @@ class LocalManager with ChangeNotifier {
            description = excluded.description, tags = excluded.tags,
            directory = excluded.directory, chapters = excluded.chapters,
            cover = excluded.cover, downloadedChapters = excluded.downloadedChapters,
-           created_at = excluded.created_at, managed_by_app = excluded.managed_by_app;''',
+           created_at = excluded.created_at, managed_by_app = excluded.managed_by_app,
+           size_bytes = NULL, size_checked_at = NULL;''',
       [
         id ?? comic.id,
         comic.title,
@@ -532,6 +558,42 @@ class LocalManager with ChangeNotifier {
   void removeComic(LocalComic comic) {
     remove(comic.id, comic.comicType);
     notifyListeners();
+  }
+
+  /// Measured sizes older than this are re-measured when their tile is shown.
+  /// This is the only way edits made outside the app are noticed; every write
+  /// through [add] resets the size immediately.
+  static const sizeCacheTtl = Duration(days: 1);
+
+  /// Whether [comic] carries a size that is still shown without measuring.
+  static bool hasFreshSize(LocalComic comic, {DateTime? now}) {
+    final checkedAt = comic.sizeCheckedAt;
+    return comic.sizeBytes != null &&
+        checkedAt != null &&
+        (now ?? DateTime.now()).difference(checkedAt) < sizeCacheTtl;
+  }
+
+  /// Stores a measured size. It deliberately does not notify: the caller
+  /// already shows the value it measured, and a notification would rebuild the
+  /// whole library grid once per tile.
+  void setSize(String id, ComicType comicType, int bytes, {DateTime? now}) {
+    _db.execute(
+      'UPDATE comics SET size_bytes = ?, size_checked_at = ? '
+      'WHERE id = ? AND comic_type = ?;',
+      [
+        bytes,
+        (now ?? DateTime.now()).millisecondsSinceEpoch,
+        id,
+        comicType.value,
+      ],
+    );
+  }
+
+  /// Measures the comic directory on a worker isolate and records the result.
+  Future<int> measureSize(LocalComic comic) async {
+    final bytes = await directorySizeIsolate(comic.baseDir);
+    setSize(comic.id, comic.comicType, bytes);
+    return bytes;
   }
 
   late LocalLibrary library;

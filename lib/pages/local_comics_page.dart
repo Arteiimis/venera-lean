@@ -38,6 +38,10 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
   int? folder;
   bool uncategorized = false;
   bool customOrder = false;
+
+  /// Sizes measured during this page session, keyed by base directory, kept
+  /// so filtering and rebuilding never measure a comic twice. Measured values
+  /// are also stored in the database, so the next opening shows them at once.
   final _sizes = <String, Future<int>>{};
 
   String keyword = "";
@@ -52,7 +56,11 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
     if (!mounted) return;
     _all = LocalManager().getComics(sortType);
     _searchIndex = null;
-    _sizes.clear();
+    // Forget only the measurements of comics whose row no longer carries a
+    // size (they were written to since) or that are gone; the others still
+    // equal the database and would be measured again for nothing.
+    final current = {for (final comic in _all) comic.baseDir: comic};
+    _sizes.removeWhere((dir, _) => current[dir]?.sizeBytes == null);
     _applyFilter();
   }
 
@@ -97,16 +105,6 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
         (c, _) => !items.any((v) => v.id == c.id && v.comicType == c.comicType),
       );
     });
-  }
-
-  Future<int> _size(LocalComic comic) async {
-    var bytes = 0;
-    await for (final entity in Directory(
-      comic.baseDir,
-    ).list(recursive: true, followLinks: false)) {
-      if (entity is File) bytes += await entity.length();
-    }
-    return bytes;
   }
 
   Future<void> _moveComics(List<LocalComic> items) async {
@@ -591,10 +589,25 @@ class _LocalComicsPageState extends State<LocalComicsPage> {
                   (comic.comicType == ComicType.local
                       ? 'Local'.tl
                       : comic.sourceKey);
+              final prefix = '$source · ';
+              final cached = comic.sizeBytes;
+              if (cached != null && LocalManager.hasFreshSize(comic)) {
+                return Text('$prefix${bytesToReadableString(cached)}');
+              }
+              // Unknown, or older than the TTL: show the stored value at once
+              // and measure again on a worker isolate.
+              final measure = _sizes.putIfAbsent(
+                comic.baseDir,
+                () => LocalManager().measureSize(comic),
+              );
+              // A tile unmounted before a late failure must not turn it into
+              // an unhandled error.
+              measure.ignore();
               return FutureBuilder<int>(
-                future: _sizes.putIfAbsent(comic.baseDir, () => _size(comic)),
+                future: measure,
+                initialData: cached,
                 builder: (context, snapshot) => Text(
-                  '$source · ${snapshot.hasData
+                  '$prefix${snapshot.hasData
                       ? bytesToReadableString(snapshot.data!)
                       : snapshot.hasError
                       ? "Unavailable".tl

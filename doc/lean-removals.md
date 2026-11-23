@@ -160,3 +160,15 @@
 - `archive` 4.0.7 → 4.7.1：解压/写入路径的量化收益来自上游 changelog（deflate 约 2.5 倍、逐条读 zip 约 1.5 倍）。
 - 新增 Windows 帧基线：`integration_test/performance_frames_test.dart` + `tool/test_performance_windows.ps1`（profile 构建直接运行，采样写 `.dart_tool/performance-audit/`；`flutter drive` 无法稳定 attach Windows profile 进程，故不走 drive）。
 - 状态：已完成；material_ui 迁移待办。
+
+## 批次 10 本地卡片占用统计与封面解码
+
+背景：本地卡片右下角的「来源 · 占用」每次打开页面都要重新遍历目录（缓存挂在页面 State 上，页面是每次新开的路由），而且遍历在 UI isolate 上逐文件 `await File.length()`——本机 193 本 / 9.9 万个文件的库，首屏 10 本就要占 UI 线程 140～530 ms；封面按原尺寸解码，重启后首次打开要和遍历一起解码几十张封面，表现为「卡一下」。
+
+- `lib/foundation/local.dart`：`comics` 表新增可空的 `size_bytes`/`size_checked_at`（启动时 `ALTER TABLE` 迁移，两处 `CREATE TABLE` 同步），`LocalComic` 新增 `sizeBytes`/`sizeCheckedAt`。`add()` 的 upsert 一律把两列置 NULL：所有 app 内写入（下载章节、导入、刷新库）都走它，等于自动失效，不需要额外钩子。新增 `LocalManager.setSize()`（不 notify，避免每个卡片触发整页重建）、`measureSize()`（isolate 测量并写回）、`hasFreshSize()` 与 `sizeCacheTtl = 1 天`（兜底资源管理器里的外部改动）。
+- `lib/utils/io.dart`：新增 `directorySizeIsolate()`，`Isolate.run` + `listSync/lengthSync`，不跟链接；根目录缺失仍抛错（卡片显示 Unavailable），子目录不可读或文件中途消失只跳过。实测 10 本大书（19k 文件）：UI isolate 上 531 ms → isolate 1.8 s 且 UI 线程为 0。
+- `lib/pages/local_comics_page.dart`：footer 优先同步渲染数据库里的新鲜值；缺失或过期时用 `FutureBuilder.initialData` 先显示旧值再在 isolate 重测（stale-while-revalidate）；`update()` 不再整体清空 `_sizes`，只丢掉数据库里已无值的条目。
+- `lib/foundation/image_provider/base_image_provider.dart`、`local_comic_image.dart`：像素预算从静态改为可覆盖的 `maxDecodedPixel`；`LocalComicImageProvider` 开 `enableResize` 并把预算设为 800×1200（封面只在卡片尺寸显示，此前 3 MB 的 cover.jpg 会解码成 32 MB 纹理并挤占图片缓存）。`ReaderImageProvider` 等仍用 2560×1440。
+- 测试：新增 `test/local_size_cache_test.dart`（isolate 统计、持久化、TTL、写入失效、目录消失报错）、`test/local_cover_size_test.dart`（真实加载管线里拿到的目标尺寸）；`test/local_migration_test.dart` 加上一版库的迁移用例；`test/local_comics_page_test.dart` 断言占用等于真实目录总量、已写入数据库，并在重开页面后同步出现。
+- 上游碰撞点：`local.dart`（65 次上游提交；列、`fromRow`、`add()` 的 upsert 三处）、`local_comics_page.dart`（32 次）、`image_provider/base_image_provider.dart`、`image_provider/local_comic_image.dart`。合并时保留本实现：上游若把 `add()` 的 upsert 改回去，缓存不再失效，会显示过期的占用。
+- 状态：已完成。未跑 Windows 帧基线：`tool/test_performance_windows.ps1` 只测启动首帧和生成像素的列表滚动，不经过本地页和图片 provider。
